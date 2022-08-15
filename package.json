@@ -1,0 +1,29 @@
+{
+  "name": "@starkswap/starkswap-contracts",
+  "version": "0.1.0",
+  "description": "Starkswap V1 contracts",
+  "scripts": {
+    "compile": "yarn hardhat starknet-compile",
+    "test": "yarn hardhat test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com:Starkswap/starkswap-contracts.git"
+  },
+  "keywords": [],
+  "author": "",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.6",
+    "@shardlabs/starknet-hardhat-plugin": "^0.6.2",
+    "@types/chai": "^4.3.1",
+    "@types/mocha": "^9.1.1",
+    "@types/node": "^18.7.4",
+    "chai": "^4.3.4",
+    "ethers": "^5.6.9",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.5"
+  },
+  "dependencies": {
+    "hardhat": "^2.10.1"
+  }
+}
