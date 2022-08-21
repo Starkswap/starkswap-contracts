@@ -1,4 +1,4 @@
-# Starkswap AMM Contracts
+# Starkswap AMM Contracts [![Starkswap AMM CI](https://github.com/Starkswap/starkswap-contracts/actions/workflows/CI.yml/badge.svg)](https://github.com/Starkswap/starkswap-contracts/actions/workflows/CI.yml)
 
 Contracts for the Starkswap V1 AMM supporting volatile (`xy = k`) as well as stable (`x^3y * y^3x = k`) curves.
 

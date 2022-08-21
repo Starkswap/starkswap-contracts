@@ -10,8 +10,17 @@
     "type": "git",
     "url": "git+ssh://git@github.com:Starkswap/starkswap-contracts.git"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+      "starkswap",
+      "ethereum",
+      "cairo-lang",
+      "cairo",
+      "starknet",
+      "starkware"
+  ],
+  "files": [
+    "/starknet-artifacts/contracts"
+  ],
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@shardlabs/starknet-hardhat-plugin": "^0.6.2",
