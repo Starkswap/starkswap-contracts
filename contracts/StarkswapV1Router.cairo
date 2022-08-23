@@ -17,6 +17,7 @@ from starkware.cairo.common.uint256 import (
 from openzeppelin.security.safemath import SafeUint256
 from contracts.utils.uint import (assert_uint256_zero, assert_uint256_gt)
 from contracts.utils.sort import (_sort_tokens, _sort_amounts)
+from contracts.utils.decimals import (make_18_dec, unmake_18_dec)
 
 from contracts.structs.route import Route
 from openzeppelin.token.erc20.interfaces.IERC20 import IERC20
@@ -361,7 +362,7 @@ func swapTokensForExactTokens{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
 
 end
 
-@external
+@view
 func quote{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     amount_a: Uint256,
     reserve_a: Uint256,
@@ -385,11 +386,13 @@ func quote{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
 end
 
-@external
+@view
 func getAmountOut{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     amount_in: Uint256,
     reserve_in: Uint256,
     reserve_out: Uint256,
+    decimals_in: felt,
+    decimals_out: felt,
     curve: felt
     ) -> (amount_out: Uint256):
     alloc_locals
@@ -403,16 +406,23 @@ func getAmountOut{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
         assert_uint256_gt(reserve_out, Uint256(0,0))
     end
 
-    let (amount_out) = IStarkswapV1Curve.library_call_get_amount_out(curve, amount_in, reserve_in, reserve_out)
-    return (amount_out)
+    let (ai) = make_18_dec(amount_in, decimals_in)
+    let (ri) = make_18_dec(reserve_in, decimals_in)
+    let (ro) = make_18_dec(reserve_out, decimals_out)
+    let (amount_out) = IStarkswapV1Curve.library_call_get_amount_out(curve, ai, ri, ro)
+
+    let (ao) = unmake_18_dec(amount_out, decimals_out)
+    return (ao)
 
 end
 
-@external
+@view
 func getAmountIn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     amount_out: Uint256,
     reserve_in: Uint256,
     reserve_out: Uint256,
+    decimals_in: felt,
+    decimals_out: felt,
     curve: felt
     ) -> (amount_in: Uint256):
     alloc_locals
@@ -426,8 +436,13 @@ func getAmountIn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         assert_uint256_gt(reserve_out, Uint256(0,0))
     end
 
-    let (amount_in) = IStarkswapV1Curve.library_call_get_amount_in(curve, amount_out, reserve_in, reserve_out)
-    return (amount_in)
+    let (ao) = make_18_dec(amount_out, decimals_out)
+    let (ri) = make_18_dec(reserve_in, decimals_in)
+    let (ro) = make_18_dec(reserve_out, decimals_out)
+    let (amount_in) = IStarkswapV1Curve.library_call_get_amount_in(curve, ao, ri, ro)
+
+    let (ai) = unmake_18_dec(amount_in, decimals_in)
+    return (ai)
 end
 
 func _calculate_amounts_out{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -442,7 +457,10 @@ func _calculate_amounts_out{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
 
     let route = [routes]
     let (reserve_in: Uint256, reserve_out: Uint256) = _get_reserves(route.input, route.output, route.curve)
-    let (amount_out: Uint256) = getAmountOut([amounts], reserve_in, reserve_out, route.curve)
+    let (decimals_in: felt) = IERC20.decimals(route.input)
+    let (decimals_out: felt) = IERC20.decimals(route.input)
+
+    let (amount_out: Uint256) = getAmountOut([amounts], reserve_in, reserve_out, decimals_in, decimals_out, route.curve)
     let next_amounts = amounts + Uint256.SIZE
     assert [next_amounts] = amount_out
 
@@ -450,7 +468,7 @@ func _calculate_amounts_out{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
 
 end
 
-@external
+@view
 func getAmountsOut{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     amount_in: Uint256,
     routes_len: felt,
@@ -486,14 +504,16 @@ func _calculate_amounts_in{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
 
     let route = routes[routes_len]
     let (reserve_in: Uint256, reserve_out: Uint256) = _get_reserves(route.input, route.output, route.curve)
-    let (amount_in: Uint256) = getAmountIn(amounts[routes_len + 1], reserve_in, reserve_out, route.curve)
+    let (decimals_in: felt) = IERC20.decimals(route.input)
+    let (decimals_out: felt) = IERC20.decimals(route.input)
+    let (amount_in: Uint256) = getAmountIn(amounts[routes_len + 1], reserve_in, reserve_out, decimals_in, decimals_out, route.curve)
     assert amounts[routes_len] = amount_in
 
     return _calculate_amounts_in(routes_len - 1, routes, amounts)
 
 end
 
-@external
+@view
 func getAmountsIn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     amount_out: Uint256,
     routes_len: felt,

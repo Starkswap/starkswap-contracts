@@ -10,6 +10,7 @@ from starkware.cairo.common.math import (assert_not_equal, assert_not_zero, asse
 from contracts.utils.uint import (assert_uint256_zero, assert_uint256_gt, assert_uint256_ge)
 from openzeppelin.token.erc20.library import ERC20
 from openzeppelin.token.erc20.interfaces.IERC20 import IERC20
+from contracts.utils.decimals import make_18_dec
 from contracts.interfaces.IStarkswapV1Factory import IStarkswapV1Factory
 from contracts.interfaces.IStarkswapV1Callee import IStarkswapV1Callee
 from contracts.interfaces.IStarkswapV1Curve import IStarkswapV1Curve
@@ -581,6 +582,9 @@ func swap{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(bas
     _transfer_out(base_token_address, quote_token_address, base_amount_out, quote_amount_out, to)
     _invoke_callee(base_amount_out, quote_amount_out, to, calldata_len, calldata)
 
+    let (base_token_decimals) = IERC20.decimals(base_token_address)
+    let (quote_token_decimals) = IERC20.decimals(quote_token_address)
+
     let (base_token_balance) = IERC20.balanceOf(base_token_address, contract_address)
     let (quote_token_balance) = IERC20.balanceOf(quote_token_address, contract_address)
 
@@ -604,8 +608,10 @@ func swap{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(bas
         let (quote_reserve_adjusted, _) = uint256_mul(quote_token_reserve, Uint256(1000, 0))
 
         let (class_hash) = sv_curve.read()
-        let (new_k) = IStarkswapV1Curve.library_call_get_k(class_hash, base_token_balance_adjusted, quote_token_balance_adjusted)
-        let (old_k) = IStarkswapV1Curve.library_call_get_k(class_hash, base_reserve_adjusted, quote_reserve_adjusted)
+        let (a0, b0) = normalise_decimals(base_token_balance_adjusted, quote_token_balance_adjusted, base_token_decimals, quote_token_decimals)
+        let (a1, b1) = normalise_decimals(base_reserve_adjusted, quote_reserve_adjusted, base_token_decimals, quote_token_decimals)
+        let (new_k) = IStarkswapV1Curve.library_call_get_k(class_hash, a0, b0)
+        let (old_k) = IStarkswapV1Curve.library_call_get_k(class_hash, a1, b1)
 
         assert_uint256_ge(new_k, old_k)
     end
@@ -614,9 +620,17 @@ func swap{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(bas
     let (sender) = get_caller_address()
     ev_swap.emit(sender, base_amount_in, quote_amount_in, base_amount_out, quote_amount_out, to)
 
-
     return ()
 end
+
+func normalise_decimals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(reserve_a: Uint256, reserve_b: Uint256, decimals_a: felt, decimals_b: felt) -> (reserve_a: Uint256, reserve_b: Uint256):
+    alloc_locals
+    let (reserve_a_normalised) = make_18_dec(reserve_a, decimals_a)
+    let (reserve_b_normalised) = make_18_dec(reserve_b, decimals_b)
+
+    return (reserve_a_normalised, reserve_b_normalised)
+end
+
 
 @external
 func skim{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(to: felt):
