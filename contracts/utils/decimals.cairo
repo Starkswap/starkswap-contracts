@@ -29,5 +29,7 @@ func unmake_18_dec{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
         let (decimal_scaler)      = pow(10, decimals)
         let (r0)                  = SafeUint256.mul(value, Uint256(decimal_scaler, 0))
         let (normalised_value, _) = SafeUint256.div_rem(r0, Uint256(DECIMAL_18_NORMALISER, 0))
+
+        return (normalised_value)
     end
 end
