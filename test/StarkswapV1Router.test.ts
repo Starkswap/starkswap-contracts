@@ -82,23 +82,20 @@ describe('StarkswapV1Router', function () {
             expect((await router.call('quote', {
                 amount_a: toUint256(BigInt(1)),
                 reserve_a: toUint256(BigInt(100)),
-                reserve_b: toUint256(BigInt(200)),
-                curve: volatileClassHash
+                reserve_b: toUint256(BigInt(200))
             })).amount_b).to.deep.eq(toUint256(BigInt(2)))
 
             expect((await router.call('quote', {
                 amount_a: toUint256(BigInt(2)),
                 reserve_a: toUint256(BigInt(200)),
-                reserve_b: toUint256(BigInt(100)),
-                curve: volatileClassHash
+                reserve_b: toUint256(BigInt(100))
             })).amount_b).to.deep.eq(toUint256(BigInt(1)))
 
             try {
                 await router.call('quote', {
                     amount_a: toUint256(BigInt(0)),
                     reserve_a: toUint256(BigInt(100)),
-                    reserve_b: toUint256(BigInt(200)),
-                    curve: volatileClassHash
+                    reserve_b: toUint256(BigInt(200))
                 })
             } catch (e: any) {
                 expect(e.message).to.contain('StarkswapV1Router: INSUFFICIENT_AMOUNT')
@@ -108,8 +105,7 @@ describe('StarkswapV1Router', function () {
                 await router.call('quote', {
                     amount_a: toUint256(BigInt(1)),
                     reserve_a: toUint256(BigInt(0)),
-                    reserve_b: toUint256(BigInt(200)),
-                    curve: volatileClassHash
+                    reserve_b: toUint256(BigInt(200))
                 })
             } catch (e: any) {
                 expect(e.message).to.contain('StarkswapV1Router: INSUFFICIENT_LIQUIDITY')
@@ -119,8 +115,7 @@ describe('StarkswapV1Router', function () {
                 await router.call('quote', {
                     amount_a: toUint256(BigInt(1)),
                     reserve_a: toUint256(BigInt(100)),
-                    reserve_b: toUint256(BigInt(0)),
-                    curve: volatileClassHash
+                    reserve_b: toUint256(BigInt(0))
                 })
             } catch (e: any) {
                 expect(e.message).to.contain('StarkswapV1Router: INSUFFICIENT_LIQUIDITY')
