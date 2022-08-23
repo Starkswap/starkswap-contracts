@@ -6,11 +6,12 @@ from starkware.starknet.common.syscalls import (get_contract_address, get_caller
 from starkware.cairo.common.bool import (TRUE, FALSE)
 from starkware.cairo.common.uint256 import (Uint256, uint256_mul, uint256_eq, uint256_sqrt, uint256_lt, uint256_sub, uint256_add, uint256_signed_div_rem, uint256_le)
 from starkware.cairo.common.math_cmp import (is_le, is_not_zero)
-from starkware.cairo.common.math import (assert_not_equal, assert_not_zero, assert_nn_le)
+from starkware.cairo.common.math import (assert_not_equal, assert_not_zero, assert_nn_le, assert_lt)
 from contracts.utils.uint import (assert_uint256_zero, assert_uint256_gt, assert_uint256_ge)
 from openzeppelin.token.erc20.library import ERC20
 from openzeppelin.token.erc20.interfaces.IERC20 import IERC20
 from contracts.utils.decimals import make_18_dec
+from contracts.structs.observation import Observation
 from contracts.interfaces.IStarkswapV1Factory import IStarkswapV1Factory
 from contracts.interfaces.IStarkswapV1Callee import IStarkswapV1Callee
 from contracts.interfaces.IStarkswapV1Curve import IStarkswapV1Curve
@@ -20,12 +21,6 @@ const LOCKING_ADDRESS = 42
 
 # Capture oracle reading every 30 minutes
 const PERIOD_SIZE = 1800
-
-struct Observation:
-    member block_timestamp: felt
-    member base_reserve: Uint256
-    member quote_reserve: Uint256
-end
 
 @storage_var
 func sv_base_token_address() -> (address: felt):
@@ -214,18 +209,24 @@ func _collect_observations{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
 end
 
 @view
-func getObservations{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (observations_len: felt, observations: Observation*):
+func getObservations{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(num_observations: felt) -> (observations_len: felt, observations: Observation*):
     alloc_locals
     let (local observations: Observation*) = alloc()
     let (count) = sv_observations_len.read()
 
-    _collect_observations(0, count-1, observations)
+    if num_observations == 0:
+        _collect_observations(0, count-1, observations)
+        return (count, observations)
+    else:
+        assert_lt(count, num_observations)
+        _collect_observations(count-num_observations, count-1, observations)
+        return (num_observations, observations)
+    end
 
-    return (count, observations)
 end
 
 @view
-func lastObservation{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (observations: Observation):
+func lastObservation{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (observation: Observation):
     let (count) = sv_observations_len.read()
     let (observation) = sv_observations.read(count - 1)
 
@@ -491,7 +492,6 @@ func burn{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(to:
 end
 
 
-@external
 func _transfer_out{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(base_token_address: felt, quote_token_address: felt, base_amount_out: Uint256, quote_amount_out: Uint256, to: felt):
     alloc_locals
     let (is_base_out_gt_zero) = uint256_lt(Uint256(0, 0), base_amount_out)

@@ -1,6 +1,7 @@
 %lang starknet
 
 from starkware.cairo.common.uint256 import Uint256
+from contracts.structs.observation import Observation
 
 @contract_interface
 namespace IStarkswapV1Pair:
@@ -54,10 +55,10 @@ namespace IStarkswapV1Pair:
     func getReserves() -> (base_token_reserve: Uint256, quote_token_reserve: Uint256, block_timestamp_last: felt):
     end
 
-    func baseCumulativeLast() -> (cumulative_last: Uint256):
+    func getObservations(num_observations: felt) -> (observations_len: felt, observations: Observation*):
     end
 
-    func quoteCumulativeLast() -> (cumulative_last: Uint256):
+    func lastObservations() -> (observation: Observation):
     end
 
     func kLast() -> (k_last: Uint256):

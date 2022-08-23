@@ -5,7 +5,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import (
     assert_not_zero, assert_le
 )
-from starkware.cairo.common.math_cmp import (is_le_felt, is_le)
+from starkware.cairo.common.math_cmp import (is_le)
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.starknet.common.syscalls import get_caller_address
@@ -20,6 +20,7 @@ from contracts.utils.sort import (_sort_tokens, _sort_amounts)
 from contracts.utils.decimals import (make_18_dec, unmake_18_dec)
 
 from contracts.structs.route import Route
+from contracts.structs.observation import Observation
 from openzeppelin.token.erc20.interfaces.IERC20 import IERC20
 from contracts.interfaces.IStarkswapV1Pair import IStarkswapV1Pair
 from contracts.interfaces.IStarkswapV1Factory import IStarkswapV1Factory
@@ -383,8 +384,80 @@ func quote{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (amount_b, _) = uint256_signed_div_rem(r0, reserve_a)
 
     return (amount_b)
-
 end
+
+func _in_out_token{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(pair_address: felt, token_in: felt) -> (in_token_address: felt, out_token_address: felt, is_input_base: felt):
+    let (base_token_address) = IStarkswapV1Pair.baseToken(pair_address)
+    let (quote_token_address) = IStarkswapV1Pair.quoteToken(pair_address)
+
+    if token_in == base_token_address:
+        return (base_token_address, quote_token_address, TRUE)
+    end
+
+    if token_in == quote_token_address:
+        return (quote_token_address, base_token_address, FALSE)
+    end
+
+    with_attr error_message("StarkswapV1Router: INSUFFICIENT_INPUT_TOKEN"):
+        assert_not_zero(1)
+    end
+    return (0, 0, FALSE)
+end
+
+func _in_out_reserves{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(next_observation: Observation, current_observation: Observation, is_input_base: felt) -> (reserve_in: Uint256, reserve_out: Uint256):
+    alloc_locals
+    let (base_reserve) = SafeUint256.sub_le(next_observation.cumulative_base_reserve, current_observation.cumulative_base_reserve)
+    let (quote_reserve) = SafeUint256.sub_le(next_observation.cumulative_quote_reserve, current_observation.cumulative_quote_reserve)
+
+    if is_input_base == TRUE:
+        return (base_reserve, quote_reserve)
+    else:
+        return (quote_reserve, base_reserve)
+    end
+end
+
+func _sample_cumulative_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(observations_len: felt, observations: Observation*, is_input_base: felt, amount_in: Uint256, decimals_in: felt, decimals_out: felt, curve: felt) -> (cumulative_price: Uint256):
+    alloc_locals
+    let (continue) = is_le(2, observations_len)
+    if continue == FALSE:
+        return (Uint256(0, 0))
+    end
+
+    let current_observation: Observation = [observations]
+    let next_observation: Observation    = [observations + Observation.SIZE]
+
+    let time_elapsed              = next_observation.block_timestamp - current_observation.block_timestamp
+    let (reserve_in, reserve_out) = _in_out_reserves(next_observation, current_observation, is_input_base)
+
+    let (amount_out) = getAmountOut(amount_in, reserve_in, reserve_out, decimals_in, decimals_out, curve)
+
+    let (accumulator) = _sample_cumulative_price(observations_len-1, observations + Observation.SIZE, is_input_base, amount_in, decimals_in, decimals_out, curve)
+    let (r) = SafeUint256.add(amount_out, accumulator)
+    return (r)
+end
+
+@view
+func oracleQuote{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    pair_address: felt,
+    token_in: felt,
+    amount_in: Uint256,
+    sample_count: felt
+) -> (amount_out: Uint256):
+    assert_le(1, sample_count)
+
+    let (input_token_address, output_token_address, is_input_base) = _in_out_token(pair_address, token_in)
+    let (observations_len, observations)                           = IStarkswapV1Pair.getObservations(pair_address, sample_count)
+
+    let (curve: felt, _)     = IStarkswapV1Pair.curve(pair_address)
+    let (decimals_in: felt)  = IERC20.decimals(input_token_address)
+    let (decimals_out: felt) = IERC20.decimals(output_token_address)
+
+    let (price_average_cumulative) = _sample_cumulative_price(observations_len, observations, is_input_base, amount_in, decimals_in, decimals_out, curve)
+    let (quote, _) = SafeUint256.div_rem(price_average_cumulative, Uint256(sample_count, 0))
+
+    return (quote)
+end
+
 
 @view
 func getAmountOut{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -458,7 +531,7 @@ func _calculate_amounts_out{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
     let route = [routes]
     let (reserve_in: Uint256, reserve_out: Uint256) = _get_reserves(route.input, route.output, route.curve)
     let (decimals_in: felt) = IERC20.decimals(route.input)
-    let (decimals_out: felt) = IERC20.decimals(route.input)
+    let (decimals_out: felt) = IERC20.decimals(route.output)
 
     let (amount_out: Uint256) = getAmountOut([amounts], reserve_in, reserve_out, decimals_in, decimals_out, route.curve)
     let next_amounts = amounts + Uint256.SIZE
@@ -505,7 +578,7 @@ func _calculate_amounts_in{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
     let route = routes[routes_len]
     let (reserve_in: Uint256, reserve_out: Uint256) = _get_reserves(route.input, route.output, route.curve)
     let (decimals_in: felt) = IERC20.decimals(route.input)
-    let (decimals_out: felt) = IERC20.decimals(route.input)
+    let (decimals_out: felt) = IERC20.decimals(route.output)
     let (amount_in: Uint256) = getAmountIn(amounts[routes_len + 1], reserve_in, reserve_out, decimals_in, decimals_out, route.curve)
     assert amounts[routes_len] = amount_in
 
