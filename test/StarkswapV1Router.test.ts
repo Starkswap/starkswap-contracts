@@ -131,6 +131,8 @@ describe('StarkswapV1Router', function () {
                 amount_in: toUint256(BigInt(2)),
                 reserve_in: toUint256(BigInt(100)),
                 reserve_out: toUint256(BigInt(100)),
+                decimals_in: 18n,
+                decimals_out: 18n,
                 curve: volatileClassHash
             })).amount_out).to.deep.eq(toUint256(BigInt(1)))
 
@@ -139,6 +141,8 @@ describe('StarkswapV1Router', function () {
                     amount_in: toUint256(BigInt(0)),
                     reserve_in: toUint256(BigInt(100)),
                     reserve_out: toUint256(BigInt(100)),
+                    decimals_in: 18n,
+                    decimals_out: 18n,
                     curve: volatileClassHash
                 })
             } catch (e: any) {
@@ -150,6 +154,8 @@ describe('StarkswapV1Router', function () {
                     amount_in: toUint256(BigInt(2)),
                     reserve_in: toUint256(BigInt(0)),
                     reserve_out: toUint256(BigInt(100)),
+                    decimals_in: 18n,
+                    decimals_out: 18n,
                     curve: volatileClassHash
                 })
             } catch (e: any) {
@@ -161,6 +167,8 @@ describe('StarkswapV1Router', function () {
                     amount_in: toUint256(BigInt(2)),
                     reserve_in: toUint256(BigInt(100)),
                     reserve_out: toUint256(BigInt(0)),
+                    decimals_in: 18n,
+                    decimals_out: 18n,
                     curve: volatileClassHash
                 })
             } catch (e: any) {
@@ -177,6 +185,8 @@ describe('StarkswapV1Router', function () {
                 amount_out: toUint256(BigInt(1)),
                 reserve_in: toUint256(BigInt(100)),
                 reserve_out: toUint256(BigInt(100)),
+                decimals_in: 18n,
+                decimals_out: 18n,
                 curve: volatileClassHash
             })).amount_in).to.deep.eq(toUint256(BigInt(2)))
 
@@ -185,6 +195,8 @@ describe('StarkswapV1Router', function () {
                     amount_out: toUint256(BigInt(0)),
                     reserve_in: toUint256(BigInt(100)),
                     reserve_out: toUint256(BigInt(100)),
+                    decimals_in: 18n,
+                    decimals_out: 18n,
                     curve: volatileClassHash
                 })
             } catch (e: any) {
@@ -196,6 +208,8 @@ describe('StarkswapV1Router', function () {
                     amount_out: toUint256(BigInt(1)),
                     reserve_in: toUint256(BigInt(0)),
                     reserve_out: toUint256(BigInt(100)),
+                    decimals_in: 18n,
+                    decimals_out: 18n,
                     curve: volatileClassHash
                 })
             } catch (e: any) {
@@ -207,6 +221,8 @@ describe('StarkswapV1Router', function () {
                     amount_out: toUint256(BigInt(1)),
                     reserve_in: toUint256(BigInt(100)),
                     reserve_out: toUint256(BigInt(0)),
+                    decimals_in: 18n,
+                    decimals_out: 18n,
                     curve: volatileClassHash
                 })
             } catch (e: any) {
