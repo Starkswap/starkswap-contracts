@@ -9,7 +9,7 @@ import {
     routerFixture, TokenFixture,
     tokenFixture
 } from "./shared/fixtures";
-import {expandTo18Decimals, fromStringToHex, fromUint256, toUint256} from "./shared/utils";
+import {expandTo18Decimals, fromStringToHex, toUint256} from "./shared/utils";
 import {Account} from "@shardlabs/starknet-hardhat-plugin/dist/src/account";
 import {StarknetContract} from "@shardlabs/starknet-hardhat-plugin/dist/src/types";
 
@@ -62,22 +62,24 @@ describe('StarkswapV1Router', function () {
         return pairContractFactory.getContractAt(pairAddress);
     }
 
-    before(async () => {
+    beforeEach(async () => {
         setter = await starknet.deployAccount('OpenZeppelin')
         account = await starknet.deployAccount('OpenZeppelin')
     })
 
+    afterEach(async () => {
+        await starknet.devnet.restart()
+    })
 
     describe( 'quote,getAmountOut,getAmountIn', () => {
 
-        before(async () => {
+        beforeEach(async () => {
             fFixture = await factoryFixture(setter)
             rFixture = await routerFixture(fFixture)
         })
 
         it('quote', async () => {
             const router = rFixture.router
-            const volatileClassHash = fFixture.volatileClassHash
 
             expect((await router.call('quote', {
                 amount_a: toUint256(BigInt(1)),
@@ -235,7 +237,7 @@ describe('StarkswapV1Router', function () {
 
     describe( 'getAmountsOut,getAmountsIn', () => {
 
-        before(async () => {
+        beforeEach(async () => {
             fFixture = await factoryFixture(setter)
             rFixture = await routerFixture(fFixture)
             tFixture = await tokenFixture(setter)
