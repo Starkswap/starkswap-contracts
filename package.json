@@ -6,12 +6,9 @@
     "compile": "yarn hardhat starknet-compile",
     "test": "yarn hardhat test"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "repository": {
     "type": "git",
-    "url": "git+ssh://github.com/Starkswap/starkswap-contracts.git"
+    "url": "https://github.com/Starkswap/starkswap-contracts.git"
   },
   "keywords": [
     "starkswap",
