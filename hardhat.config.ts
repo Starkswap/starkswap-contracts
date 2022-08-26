@@ -12,6 +12,7 @@ const config: HardhatUserConfig = {
     networks: {
         integratedDevnet: {
             url: "http://127.0.0.1:5050",
+            dockerizedVersion: "latest",
         }
     }
 };

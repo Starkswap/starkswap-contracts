@@ -1,4 +1,6 @@
 import {starknet} from "hardhat";
+import {tmpdir} from 'os';
+import Path from "path";
 import {Account} from "@shardlabs/starknet-hardhat-plugin/dist/src/account";
 import {factoryFixture, pairFixture} from "./shared/fixtures";
 import {StarknetContract} from "@shardlabs/starknet-hardhat-plugin/dist/src/types";
@@ -14,8 +16,9 @@ describe("StarkswapV1Pair", function () {
     let baseToken: StarknetContract;
     let quoteToken: StarknetContract;
     let pair: StarknetContract;
+    let dumpPath = "dump.pkl"; //Path.join(tmpdir(), `devnet-dump-${new Date().getTime()}`);
 
-    beforeEach(async function () {
+    before(async function () {
         wallet = await starknet.deployAccount("OpenZeppelin")
         const fFixture = await factoryFixture(wallet)
         const fixture = await pairFixture(fFixture, wallet)
@@ -23,6 +26,13 @@ describe("StarkswapV1Pair", function () {
         baseToken = fixture.baseToken;
         quoteToken = fixture.quoteToken;
         pair = fixture.pair;
+
+        await starknet.devnet.dump(dumpPath);
+    });
+
+    beforeEach(async function () {
+        await starknet.devnet.restart();
+        await starknet.devnet.load(dumpPath);
     });
 
     async function addLiquidity(baseTokenAmount: bigint, quoteTokenAmount: bigint) {
