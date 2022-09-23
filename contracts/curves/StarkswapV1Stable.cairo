@@ -22,6 +22,7 @@ func get_amount_out{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     ) -> (amount_out: Uint256):
     alloc_locals
 
+    // @audit-info fees built in here
     let (r0) = SafeUint256.mul(amount_in, Uint256(997, 0))
     let (amount_in_minus_fee, _) = uint256_signed_div_rem(r0, Uint256(1000, 0))
 
@@ -42,6 +43,7 @@ func get_amount_in{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     ) -> (amount_in: Uint256):
     alloc_locals
 
+    // @audit-info fees built in here
     let (k : Uint256) = get_k(reserve_in, reserve_out)
 
     let (adjusted_x: Uint256) = SafeUint256.sub_le(reserve_out, amount_out)
@@ -89,19 +91,19 @@ func _derivative_x3y_y3x{
     return (res = x3_3y2x)
 end
 
-# @dev Get the new y based on the stable bonding curve (k=x3y+y3x) using Newton's method:
+// @dev Get the new y based on the stable bonding curve (k=x3y+y3x) using Newton's method:
 # https://en.wikipedia.org/wiki/Newton%27s_method
-# @note Newton's method should get a closer estimation with every iteration since the derivative of k=x3y+y3x
+// @note Newton's method should get a closer estimation with every iteration since the derivative of k=x3y+y3x
 # continuously increases (there are no local extrema/minima), therefore it should converge on an estimation
 # of y that results in k being with a diff of at most 1 from the real k. Are there any circumstances under which this
 # will not happen? If we can prove that this is the case, perhaps we could do away with the `iterations` param and loop
 # until a sufficient y is found?
 # Watch this: https://www.youtube.com/watch?v=zyXRo8Qjj0A&ab_channel=OscarVeliz
 # Read this: https://en.wikipedia.org/wiki/Newton%27s_method#Practical_considerations
-# @param k The k = x3y + y3x invariant of the curve
-# @param x The x variable of the curve
-# @param y0 A sufficiently close value to the result y, with which to start our search for the correct y
-# @param iterations Number of times to iterate over Newton's method
+// @param k The k = x3y + y3x invariant of the curve
+// @param x The x variable of the curve
+// @param y0 A sufficiently close value to the result y, with which to start our search for the correct y
+// @param iterations Number of times to iterate over Newton's method
 # view function for testing
 @view
 func _get_y{
