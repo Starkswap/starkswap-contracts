@@ -20,7 +20,6 @@ func get_amount_out{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
     # (a*997*B)/(A*1000+a*997)
 
-    // @audit-info fees built in here
     let (r0)          = SafeUint256.mul(amount_in, Uint256(997, 0))
     let (numerator)   = SafeUint256.mul(r0, reserve_out)
     let (r1)          = SafeUint256.mul(reserve_in, Uint256(1000, 0))
@@ -41,7 +40,6 @@ func get_amount_in{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 
     # (A*b*1000)/((B-b)*997) + 1
 
-    // @audit-info fees built in here
     let (r0)          = SafeUint256.mul(reserve_in, amount_out)
     let (numerator)   = SafeUint256.mul(r0, Uint256(1000, 0))
     let (r1)          = SafeUint256.sub_le(reserve_out, amount_out)

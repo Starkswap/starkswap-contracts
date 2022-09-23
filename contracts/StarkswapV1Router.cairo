@@ -76,7 +76,6 @@ end
 # External functions
 #####################################################################
 
-// @audit-info get pair address using `get_contract_address()`
 func _pair_for{syscall_ptr: felt*,  pedersen_ptr: HashBuiltin*, range_check_ptr}(
     token_a_address: felt,
     token_b_address: felt,
@@ -96,7 +95,6 @@ func _pair_for{syscall_ptr: felt*,  pedersen_ptr: HashBuiltin*, range_check_ptr}
 
 end
 
-// @audit-info simple func. get reserves of pair.
 func _get_reserves{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     token_a_address: felt,
     token_b_address: felt,
@@ -120,7 +118,6 @@ func _get_reserves{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 
 end
 
-// @audit-info revert if deadline > block_timestamp
 func _assert_valid_deadline{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     deadline: felt
     ) -> ():
@@ -134,7 +131,6 @@ func _assert_valid_deadline{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 
 end
 
-// @audit-info call `factory.getPair()`, if no pair exists, call `factory.createPair()`
 func _get_or_create_pair{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     token_a_address: felt,
     token_b_address: felt,
@@ -153,8 +149,6 @@ func _get_or_create_pair{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
 
 end
 
-// @audit-info https://github.com/Uniswap/v2-periphery/blob/master/contracts/UniswapV2Router01.sol#L29
-// @audit-info returns amounts to deposit according to params and pair's reserves, doesn't actually deposit
 func _add_liquidity{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     token_a_address: felt,
     token_b_address: felt,
@@ -198,7 +192,6 @@ func _add_liquidity{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 
 end
 
-// @audit-info https://github.com/Uniswap/v2-periphery/blob/master/contracts/UniswapV2Router01.sol#L58
 @external
 func addLiquidity{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     token_a_address: felt,
@@ -227,7 +220,6 @@ func addLiquidity{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 
 end
 
-// @audit-info https://github.com/Uniswap/v2-periphery/blob/master/contracts/UniswapV2Router01.sol#L99
 @external
 func removeLiquidity{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     token_a_address: felt,
@@ -269,8 +261,6 @@ func removeLiquidity{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
 end
 
-// @audit-info https://github.com/Uniswap/v2-periphery/blob/master/contracts/UniswapV2Router01.sol#L175
-// @audit-info i < path.length - 2 ? UniswapV2Library.pairFor(factory, output, path[i + 2]) : _to
 func _calculate_to_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     routes_len: felt,
     routes: Route*,
@@ -280,15 +270,12 @@ func _calculate_to_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
         return (to_address=to)
     end
 
-    // @audit-ok why is it taking the second route and not the first one?
-    // @audit-ok see comment above func declaration
     let route = [routes + Route.SIZE]
     let (pair_address: felt) = _pair_for(route.input, route.output, route.curve)
     return (to_address=pair_address)
 
 end
 
-// @audit-info https://github.com/Uniswap/v2-periphery/blob/master/contracts/UniswapV2Router01.sol#L167
 func _swap{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     amounts: Uint256*,
     routes_len: felt,
@@ -305,8 +292,6 @@ func _swap{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let route = [routes]
     let (base_token: felt, _) = _sort_tokens(route.input, route.output)
     let (base_out: Uint256, quote_out: Uint256) = _sort_amounts(route.input, base_token, Uint256(0, 0), [amounts])
-    // @audit-ok why `routes_len - 1` ?
-    // @audit-ok see `_calculate_to_address()`
     let (to_address: felt) = _calculate_to_address(routes_len - 1, routes, to)
 
     let (pair_address: felt) = _pair_for(route.input, route.output, route.curve)
@@ -316,7 +301,6 @@ func _swap{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
 end
 
-// @audit-info https://github.com/Uniswap/v2-periphery/blob/master/contracts/UniswapV2Router01.sol#L179
 @external
 func swapExactTokensForTokens{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     amount_in: Uint256,
@@ -379,8 +363,6 @@ func swapTokensForExactTokens{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
 
 end
 
-// @audit-info return reserve_b * amount_a / reserve_a
-// @audit what if pair uses stable curve?
 @view
 func quote{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     amount_a: Uint256,
@@ -404,11 +386,7 @@ func quote{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     return (amount_b)
 end
 
-// @audit-info simple func
-func _in_out_token{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    pair_address: felt,
-    token_in: felt
-) -> (in_token_address: felt, out_token_address: felt, is_input_base: felt):
+func _in_out_token{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(pair_address: felt, token_in: felt) -> (in_token_address: felt, out_token_address: felt, is_input_base: felt):
     let (base_token_address) = IStarkswapV1Pair.baseToken(pair_address)
     let (quote_token_address) = IStarkswapV1Pair.quoteToken(pair_address)
 
@@ -426,14 +404,7 @@ func _in_out_token{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     return (0, 0, FALSE)
 end
 
-// @audit-info returns diff between cumulative_*_reserve between observations
-// @audit what does that diff give you? those values have an issue (`_update()` func in StarkswapV1Pair.cairo)
-// @audit but either way - the diff between them doesn't make sense
-func _in_out_reserves{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    next_observation: Observation,
-    current_observation: Observation,
-    is_input_base: felt
-) -> (reserve_in: Uint256, reserve_out: Uint256):
+func _in_out_reserves{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(next_observation: Observation, current_observation: Observation, is_input_base: felt) -> (reserve_in: Uint256, reserve_out: Uint256):
     alloc_locals
     let (base_reserve) = SafeUint256.sub_le(next_observation.cumulative_base_reserve, current_observation.cumulative_base_reserve)
     let (quote_reserve) = SafeUint256.sub_le(next_observation.cumulative_quote_reserve, current_observation.cumulative_quote_reserve)
@@ -445,16 +416,7 @@ func _in_out_reserves{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
     end
 end
 
-// @audit `_update()` problems
-func _sample_cumulative_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    observations_len: felt,
-    observations: Observation*,
-    is_input_base: felt,
-    amount_in: Uint256,
-    decimals_in: felt,
-    decimals_out: felt,
-    curve: felt
-) -> (cumulative_price: Uint256):
+func _sample_cumulative_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(observations_len: felt, observations: Observation*, is_input_base: felt, amount_in: Uint256, decimals_in: felt, decimals_out: felt, curve: felt) -> (cumulative_price: Uint256):
     alloc_locals
     let (continue) = is_le(2, observations_len)
     if continue == FALSE:
@@ -464,9 +426,7 @@ func _sample_cumulative_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
     let current_observation: Observation = [observations]
     let next_observation: Observation    = [observations + Observation.SIZE]
 
-    // @audit time_elapsed is not used..
     let time_elapsed              = next_observation.block_timestamp - current_observation.block_timestamp
-    // @audit _in_out_reserves is tained with `_update()` problems
     let (reserve_in, reserve_out) = _in_out_reserves(next_observation, current_observation, is_input_base)
 
     let (amount_out) = getAmountOut(amount_in, reserve_in, reserve_out, decimals_in, decimals_out, curve)
@@ -476,8 +436,6 @@ func _sample_cumulative_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
     return (r)
 end
 
-// @audit-info get the average price (amount_out) accross the last `sample_count` Observations
-// @audit `_update()` problems
 @view
 func oracleQuote{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     pair_address: felt,
@@ -500,7 +458,7 @@ func oracleQuote{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return (quote)
 end
 
-// @audit-info https://github.com/Uniswap/v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/libraries/UniswapV2Library.sol#L42
+
 @view
 func getAmountOut{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     amount_in: Uint256,
@@ -531,7 +489,6 @@ func getAmountOut{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 
 end
 
-// @audit-info https://github.com/Uniswap/v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/libraries/UniswapV2Library.sol#L52
 @view
 func getAmountIn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     amount_out: Uint256,
@@ -584,8 +541,6 @@ func _calculate_amounts_out{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
 
 end
 
-// @audit-info https://github.com/Uniswap/v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol#L62
-// @audit calculation is a little different than uniswap, worth looking into
 @view
 func getAmountsOut{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     amount_in: Uint256,
@@ -631,7 +586,6 @@ func _calculate_amounts_in{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
 
 end
 
-// @audit-info https://github.com/Uniswap/v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol#L73
 @view
 func getAmountsIn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     amount_out: Uint256,

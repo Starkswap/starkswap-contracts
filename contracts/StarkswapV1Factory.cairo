@@ -21,13 +21,10 @@ from contracts.interfaces.IStarkswapV1Pair import IStarkswapV1Pair
 # Storage
 #####################################################################
 
-// @audit-info mapping(base_addr, quote_addr, curve) -> pair_addr
 @storage_var
 func sv_pair(base_address: felt, quote_address: felt, curve: felt) -> (pair_address: felt):
 end
 
-// @audit-info mapping(curve_class_hash) -> bool
-// @audit-info whether given curve was created
 @storage_var
 func sv_curve_class_hash(curve_class_hash: felt) -> (exists: felt):
 end
@@ -40,7 +37,6 @@ end
 func sv_fee_to() -> (fee_too_address: felt):
 end
 
-// @audit-info mapping(index) -> pair_addr
 @storage_var
 func sv_pair_by_index(index: felt) -> (pair_address: felt):
 end
@@ -49,7 +45,6 @@ end
 func sv_pairs_count() -> (all_pairs_length: felt):
 end
 
-// @audit-info pair contract implementation hash
 @storage_var
 func sv_pair_class_hash() -> (pair_class_hash: felt):
 end
@@ -64,11 +59,9 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     pair_class_hash: felt,
     ):
 
-    // @audit-info set fee_to setter
     assert_not_zero(setter)
     sv_fee_to_setter.write(setter)
 
-    // @audit-info set pair contract implementation (`pair_class_hash`)
     assert_not_zero(pair_class_hash)
     sv_pair_class_hash.write(pair_class_hash)
 
@@ -80,34 +73,28 @@ end
 # View functions
 #####################################################################
 
-// @audit-info get `pair_class_hash`
 @view
 func pairClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (pair_class_hash: felt):
     return sv_pair_class_hash.read()
 end
 
-// @audit-info return whether curve with given class hash was created (by `addCurve()`)
 @view
 func getCurve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(curve_class_hash: felt) -> (exists: felt):
     return sv_curve_class_hash.read(curve_class_hash)
 end
 
-// @audit-info get fee recipient
 @view
 func feeTo{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (address: felt):
     let (address: felt) = sv_fee_to.read()
     return (address)
 end
 
-// @audit-info get address capable of setting fee recipient
 @view
 func feeToSetter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (address: felt):
     let (address: felt) = sv_fee_to_setter.read()
     return (address)
 end
 
-// @audit-info get pair contract address (given token addresses and curve)
-// @audit is it the curve class hash that's being given?
 @view
 func getPair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     token_a_address: felt,
@@ -122,7 +109,6 @@ func getPair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 end
 
-// @audit-info get pair address at index
 @view
 func allPairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     index: felt
@@ -139,7 +125,6 @@ func allPairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 end
 
-// @audit-info 
 @view
 func allPairsLength{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (all_pairs_length: felt):
 
@@ -148,31 +133,25 @@ func allPairsLength{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
 end
 
-// @audit-info recursive func gets pairs into Pair array
 func _get_pairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         pairs_len: felt, pairs: Pair*):
 
-    // @audit dangerous equality, check what's possible to input
     if pairs_len == -1:
         return ()
     end
 
-    // @audit-info get pair info at `pairs_len` index into Pair struct
     let (pair_address: felt) = sv_pair_by_index.read(pairs_len)
     let (base_address: felt) = IStarkswapV1Pair.baseToken(contract_address=pair_address)
     let (quote_address: felt) = IStarkswapV1Pair.quoteToken(contract_address=pair_address)
     let (curve: felt, _) = IStarkswapV1Pair.curve(contract_address=pair_address)
     let pair: Pair = Pair(base_address, quote_address, pair_address, curve)
 
-    // @audit-info put Pair struct into array
     assert pairs[pairs_len] = pair
 
-    // @audit-info recursive call
     return _get_pairs(pairs_len - 1, pairs)
 
 end
 
-// @audit-info alloc new segment and get all Pair structs in it
 @view
 func getAllPairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     pairs_len: felt, pairs: Pair*):
@@ -192,47 +171,39 @@ end
 # External functions
 #####################################################################
 
-// @audit-info set fee recipient
 @external
 func setFeeTo{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(address: felt) -> (address: felt):
 
-    // @audit-info only if caller is fee_setter
     with_attr error_message("StarkswapV1Factory: FORBIDDEN"):
         let (caller_address : felt) = get_caller_address()
         let (setter: felt) = sv_fee_to_setter.read()
         assert caller_address = setter
     end
 
-    // @audit-info set fee recipient
     sv_fee_to.write(address)
     return (address)
 
 end
 
-// @audit-info set fee recipient setter
 @external
 func setFeeToSetter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(address: felt) -> (address: felt):
 
-    // @audit-info only if caller is fee_setter
     with_attr error_message("StarkswapV1Factory: FORBIDDEN"):
         let (caller_address : felt) = get_caller_address()
         let (setter: felt) = sv_fee_to_setter.read()
         assert caller_address = setter
     end
 
-    // @audit-info set fee recipient setter
     sv_fee_to_setter.write(address)
     return (address)
 
 end
 
-// @audit-info set pair class implementation
 @external
 func setPairClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     pair_class_hash: felt
     ) -> (pair_class_hash: felt):
 
-    // @audit-info only if caller is fee_setter
     with_attr error_message("StarkswapV1Factory: FORBIDDEN"):
         let (caller_address : felt) = get_caller_address()
         let (setter: felt) = sv_fee_to_setter.read()
@@ -244,14 +215,11 @@ func setPairClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 
 end
 
-// @audit-info add curve class hash to `sv_curve_class_hash` mapping
-// @audit can you add curve hash without adding actual curve? what are the consequences?
 @external
 func addCurve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     curve_class_hash: felt
     ) -> (exists: felt):
 
-    // @audit-info only if caller is fee_setter
     with_attr error_message("StarkswapV1Factory: FORBIDDEN"):
         let (caller_address : felt) = get_caller_address()
         let (setter: felt) = sv_fee_to_setter.read()
@@ -263,7 +231,6 @@ func addCurve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 end
 
-// @audit-info deploy pair contract and update this contract's fields
 @external
 func createPair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     token_a_address: felt,
@@ -273,35 +240,28 @@ func createPair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 
     alloc_locals
 
-    // @audit-info assert curve exists in `sv_curve_class_hash`
     with_attr error_message("StarkswapV1Factory: INVALID_CURVE"):
         let (curve_class_hash: felt) = sv_curve_class_hash.read(curve)
         assert curve_class_hash = TRUE
     end
 
-    // @audit-info assert token_a != token_b
     with_attr error_message("StarkswapV1Factory: IDENTICAL_ADDRESSES"):
         assert_not_equal(token_a_address, token_b_address)
     end
 
-    // @audit-info sort tokens
     let (base_address: felt, quote_address: felt) = _sort_tokens(token_a_address, token_b_address)
 
-    // @audit-info base_token != address(0)
     with_attr error_message("StarkswapV1Factory: ZERO_ADDRESS"):
         assert_not_zero(base_address)
     end
 
-    // @audit-info assert pair doesn't already exist (using `sv_pair` mapping)
     with_attr error_message("StarkswapV1Factory: PAIR_EXISTS"):
         let (existing_pair: felt) = sv_pair.read(base_address, quote_address, curve)
         assert existing_pair = FALSE
     end
 
-    // @audit-info deploy pair
     let (pair_address: felt) = _deploy_starkswap_v1_pair(base_address, quote_address, curve)
 
-    // @audit-info add pair to pair mapping by params, pair mapping by index, and increment pairs_count
     sv_pair.write(base_address, quote_address, curve, pair_address)
     let (length: felt) = sv_pairs_count.read()
     assert_nn(length + 1)
@@ -312,15 +272,12 @@ func createPair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 
 end
 
-// @audit-info deploy pair (contract implementation hash is `sv_pair_class_hash`)
 func _deploy_starkswap_v1_pair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     base_address: felt,
     quote_address: felt,
     curve: felt
     ) -> (contract_address):
 
-    // @audit-info deploy pair
-    // @audit understand all the params here
     let (pair_class_hash) = sv_pair_class_hash.read()
     let (contract_address) = deploy(
         class_hash=pair_class_hash,
