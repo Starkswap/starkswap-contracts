@@ -7,12 +7,13 @@ import "@nomiclabs/hardhat-ethers";
  */
 const config: HardhatUserConfig = {
     starknet: {
-        network: "integrated-devnet"
+        network: "integrated-devnet",
+        dockerizedVersion: "0.10.1",
+        //venv: "~/cairo_venv"
     },
     networks: {
         integratedDevnet: {
             url: "http://127.0.0.1:5050",
-            dockerizedVersion: "latest",
         }
     }
 };

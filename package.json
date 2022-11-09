@@ -1,29 +1,29 @@
 {
   "name": "@starkswap/starkswap-contracts",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Starkswap V1 contracts",
   "scripts": {
-    "compile": "yarn hardhat starknet-compile",
-    "test": "yarn hardhat test"
+    "compile": "npx hardhat starknet-compile",
+    "test": "npx hardhat test"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/Starkswap/starkswap-contracts.git"
   },
   "keywords": [
-    "starkswap",
-    "ethereum",
-    "cairo-lang",
-    "cairo",
-    "starknet",
-    "starkware"
+      "starkswap",
+      "ethereum",
+      "cairo-lang",
+      "cairo",
+      "starknet",
+      "starkware"
   ],
   "files": [
     "/starknet-artifacts/contracts"
   ],
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.6",
-    "@shardlabs/starknet-hardhat-plugin": "^0.6.2",
+    "@shardlabs/starknet-hardhat-plugin": "^0.6.8",
     "@types/chai": "^4.3.1",
     "@types/mocha": "^9.1.1",
     "@types/node": "^18.7.4",
@@ -33,7 +33,7 @@
     "typescript": "^4.5.5"
   },
   "dependencies": {
-    "hardhat": "^2.10.1"
+    "hardhat": "^2.10.2"
   },
   "license": "GPL-3.0-only"
 }

@@ -1,6 +1,8 @@
-struct Pair:
-    member base_address: felt
-    member quote_address: felt
-    member pair_address: felt
-    member curve: felt
-end
+from contracts.structs.token import Token
+
+struct Pair {
+    pair: Token,
+    base: Token,
+    quote: Token,
+    curve: felt,
+}

@@ -1,6 +1,6 @@
 import {starknet} from "hardhat"
 import {shortStringToBigIntUtil} from "@shardlabs/starknet-hardhat-plugin/dist/src/extend-utils"
-import {StarknetContract, StarknetContractFactory} from "@shardlabs/starknet-hardhat-plugin/dist/src/types"
+import {StarknetContract, StarknetContractFactory} from "hardhat/types/runtime"
 import {Account} from "@shardlabs/starknet-hardhat-plugin/dist/src/account"
 import {expandTo18Decimals, fromStringToHex, orderBySize, toUint256} from "./utils"
 
@@ -74,9 +74,9 @@ export async function factoryFixture(owner: Account): Promise<FactoryFixture> {
     const pairContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Pair")
     const stableContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Stable")
     const volatileContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Volatile")
-    const pairClassHash = await pairContractFactory.declare()
-    const stableClassHash = await stableContractFactory.declare()
-    const volatileClassHash = await volatileContractFactory.declare()
+    const pairClassHash = await owner.declare(pairContractFactory)
+    const stableClassHash = await owner.declare(stableContractFactory)
+    const volatileClassHash = await owner.declare(volatileContractFactory)
 
     const factoryContract = await factoryContractFactory.deploy({
         setter: owner.address,
