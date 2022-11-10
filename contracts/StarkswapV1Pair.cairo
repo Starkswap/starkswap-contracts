@@ -84,6 +84,10 @@ func sv_factory_address() -> (address: felt) {
 func sv_block_timestamp_last() -> (timestamp: felt) {
 }
 
+@storage_var
+func sv_reentrancy_lock() -> (locked: felt) {
+}
+
 @event
 func ev_mint(sender: felt, base_amount: Uint256, quote_amount: Uint256) {
 }
@@ -410,11 +414,11 @@ func _update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
         sv_base_token_reserve.write(base_token_balance);
         sv_quote_token_reserve.write(quote_token_balance);
-        sv_block_timestamp_last.write(block_timestamp_last);
+        sv_block_timestamp_last.write(block_timestamp);
     } else {
         sv_base_token_reserve.write(base_token_balance);
         sv_quote_token_reserve.write(quote_token_balance);
-        sv_block_timestamp_last.write(block_timestamp_last);
+        sv_block_timestamp_last.write(block_timestamp);
     }
 
     ev_sync.emit(base_token_balance, quote_token_balance);
@@ -475,6 +479,7 @@ func mint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(to: f
     liquidity: Uint256
 ) {
     alloc_locals;
+    _lock();
     let (contract_address) = get_contract_address();
 
     let (base_token_address) = sv_base_token_address.read();
@@ -506,12 +511,14 @@ func mint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(to: f
 
     if (fee_on == TRUE) {
         _update_k_last(base_token_balance, quote_token_balance);
+        _unlock();
         return (liquidity,);
     }
 
     let (sender) = get_caller_address();
     ev_mint.emit(sender, base_token_amount, quote_token_amount);
 
+    _unlock();
     return (liquidity,);
 }
 
@@ -520,6 +527,7 @@ func burn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(to: f
     base_token_amount: Uint256, quote_token_amount: Uint256
 ) {
     alloc_locals;
+    _lock();
     let (this_pair_address) = get_contract_address();
 
     let (base_token_address) = sv_base_token_address.read();
@@ -561,8 +569,10 @@ func burn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(to: f
 
     if (fee_on == TRUE) {
         _update_k_last(base_token_balance, quote_token_balance);
+        _unlock();
         return (base_token_amount, quote_token_amount);
     } else {
+        _unlock();
         return (base_token_amount, quote_token_amount);
     }
 }
@@ -592,6 +602,24 @@ func _transfer_out{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
         }
         return ();
     }
+}
+
+func _lock{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    let (is_locked) = sv_reentrancy_lock.read();
+    with_attr error_message("StarkswapV1: LOCKED") {
+        assert is_locked = 0;
+    }
+    sv_reentrancy_lock.write(1);
+
+    return();
+}
+
+func _unlock{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    let (is_locked) = sv_reentrancy_lock.read();
+    assert is_locked = 1;
+    sv_reentrancy_lock.write(0);
+
+    return();
 }
 
 func _invoke_callee{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -647,6 +675,7 @@ func swap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     calldata: felt*,
 ) {
     alloc_locals;
+    _lock();
     let (contract_address) = get_contract_address();
 
     with_attr error_message("StarkswapV1: INSUFFICIENT_OUTPUT_AMOUNT") {
@@ -728,6 +757,7 @@ func swap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (sender) = get_caller_address();
     ev_swap.emit(sender, base_amount_in, quote_amount_in, base_amount_out, quote_amount_out, to);
 
+    _unlock();
     return ();
 }
 
@@ -743,6 +773,7 @@ func normalise_decimals{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 
 @external
 func skim{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(to: felt) {
+    _lock();
     let (base_token_address) = sv_base_token_address.read();
     let (quote_token_address) = sv_quote_token_address.read();
     let (base_token_reserve) = sv_base_token_reserve.read();
@@ -759,11 +790,13 @@ func skim{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(to: f
     IERC20.transfer(base_token_address, to, base_token_amount);
     IERC20.transfer(quote_token_address, to, quote_token_amount);
 
+    _unlock();
     return ();
 }
 
 @external
 func sync{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    _lock();
     let (base_token_address) = sv_base_token_address.read();
     let (quote_token_address) = sv_quote_token_address.read();
     let (base_token_reserve) = sv_base_token_reserve.read();
@@ -776,5 +809,6 @@ func sync{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 
     _update(base_token_balance, quote_token_balance, base_token_reserve, quote_token_reserve);
 
+    _unlock();
     return ();
 }
