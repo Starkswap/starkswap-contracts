@@ -11,11 +11,8 @@ from starkware.starknet.common.syscalls import get_block_timestamp
 from starkware.starknet.core.os.contract_address.contract_address import get_contract_address
 from starkware.cairo.common.uint256 import (
     Uint256,
-    uint256_add,
     uint256_le,
-    uint256_eq,
-    uint256_sub,
-    uint256_signed_div_rem,
+    uint256_eq
 )
 from openzeppelin.security.safemath.library import SafeUint256
 from contracts.utils.uint import assert_uint256_zero, assert_uint256_gt
@@ -167,8 +164,7 @@ func _add_liquidity{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
         token_a_address, token_b_address, curve
     );
 
-    let (sum: Uint256, carry) = uint256_add(reserve_a, reserve_b);
-    assert carry = 0;
+    let (sum: Uint256) = SafeUint256.add(reserve_a, reserve_b);
     let (is_sum_zero: felt) = uint256_eq(sum, Uint256(0, 0));
     if (is_sum_zero == TRUE) {
         return (amount_a_desired, amount_b_desired, pair_address);
@@ -412,7 +408,7 @@ func quote{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     }
 
     let (r0) = SafeUint256.mul(amount_a, reserve_b);
-    let (amount_b, _) = uint256_signed_div_rem(r0, reserve_a);
+    let (amount_b, _) = SafeUint256.div_rem(r0, reserve_a);
 
     return (amount_b,);
 }

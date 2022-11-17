@@ -10,20 +10,18 @@ from starkware.starknet.common.syscalls import (
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.uint256 import (
     Uint256,
-    uint256_mul,
     uint256_eq,
     uint256_sqrt,
     uint256_lt,
-    uint256_sub,
-    uint256_add,
-    uint256_signed_div_rem,
     uint256_le,
+    uint256_check
 )
 from starkware.cairo.common.math_cmp import is_le, is_not_zero
 from starkware.cairo.common.math import assert_not_equal, assert_not_zero, assert_nn_le, assert_lt
 from contracts.utils.uint import assert_uint256_zero, assert_uint256_gt, assert_uint256_ge
 from openzeppelin.token.erc20.library import ERC20
 from openzeppelin.token.erc20.IERC20 import IERC20
+from openzeppelin.security.safemath.library import SafeUint256
 from contracts.utils.decimals import make_18_dec
 from contracts.structs.observation import Observation
 from contracts.interfaces.IStarkswapV1Factory import IStarkswapV1Factory
@@ -304,8 +302,7 @@ func _mint_fee{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         let (is_k_last_zero) = uint256_eq(k_last, Uint256(0, 0));
 
         if (is_k_last_zero != TRUE) {
-            let (k, overflow) = uint256_mul(base_token_reserve, quote_token_reserve);
-            assert_uint256_zero(overflow);
+            let (k) = SafeUint256.mul(base_token_reserve, quote_token_reserve);
 
             let (root_k) = uint256_sqrt(k);
             let (root_k_last) = uint256_sqrt(k_last);
@@ -314,16 +311,13 @@ func _mint_fee{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
             if (is_lt == TRUE) {
                 let (total_supply) = totalSupply();
 
-                let (r0) = uint256_sub(root_k, root_k_last);
-                let (numerator, overflow) = uint256_mul(total_supply, r0);
-                assert_uint256_zero(overflow);
+                let (r0) = SafeUint256.sub_le(root_k, root_k_last);
+                let (numerator) = SafeUint256.mul(total_supply, r0);
 
-                let (r1, overflow) = uint256_mul(root_k, Uint256(5, 0));
-                assert_uint256_zero(overflow);
-                let (denominator, carry) = uint256_add(r1, root_k_last);
-                assert carry = 0;
+                let (r1) = SafeUint256.mul(root_k, Uint256(5, 0));
+                let (denominator) = SafeUint256.add(r1, root_k_last);
 
-                let (liquidity, _) = uint256_signed_div_rem(numerator, denominator);
+                let (liquidity, _) = SafeUint256.div_rem(numerator, denominator);
                 let (is_liquidity_gt_zero) = uint256_lt(Uint256(0, 0), liquidity);
 
                 if (is_liquidity_gt_zero == TRUE) {
@@ -379,14 +373,20 @@ func _update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     quote_token_reserve: Uint256,
 ) -> () {
     alloc_locals;
+    with_attr error_message("StarkswapV1: amount is not a valid Uint256") {
+        uint256_check(base_token_balance);
+        uint256_check(quote_token_balance);
+        uint256_check(base_token_reserve);
+        uint256_check(quote_token_reserve);
+    }
     let (block_timestamp: felt) = get_block_timestamp();
     let (block_timestamp_last: felt) = sv_block_timestamp_last.read();
     let time_elapsed = block_timestamp - block_timestamp_last;
 
-    let (base_reserve_cumulative_last, _) = uint256_mul(
+    let (base_reserve_cumulative_last) = SafeUint256.mul(
         base_token_reserve, Uint256(time_elapsed, 0)
     );
-    let (quote_reserve_cumulative_last, _) = uint256_mul(
+    let (quote_reserve_cumulative_last) = SafeUint256.mul(
         quote_token_reserve, Uint256(time_elapsed, 0)
     );
 
@@ -425,7 +425,6 @@ func _update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return ();
 }
 
-@external
 func _calculate_liquidity{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     total_supply: Uint256,
     base_token_amount: Uint256,
@@ -438,21 +437,18 @@ func _calculate_liquidity{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     let (min_liquidity) = MINIMUM_LIQUIDITY();
 
     if (is_total_supply_zero == TRUE) {
-        let (r0, overflow) = uint256_mul(base_token_amount, quote_token_amount);
-        assert_uint256_zero(overflow);
+        let (r0) = SafeUint256.mul(base_token_amount, quote_token_amount);
         let (r1) = uint256_sqrt(r0);
-        let (liquidity) = uint256_sub(r1, min_liquidity);
+        let (liquidity) = SafeUint256.sub_lt(r1, min_liquidity);
 
         ERC20._mint(LOCKING_ADDRESS, min_liquidity);
         return (liquidity,);
     } else {
-        let (tmp0, overflow) = uint256_mul(base_token_amount, total_supply);
-        assert_uint256_zero(overflow);
-        let (r1, _) = uint256_signed_div_rem(tmp0, base_token_reserve);
+        let (tmp0) = SafeUint256.mul(base_token_amount, total_supply);
+        let (r1, _) = SafeUint256.div_rem(tmp0, base_token_reserve);
 
-        let (tmp1, overflow) = uint256_mul(quote_token_amount, total_supply);
-        assert_uint256_zero(overflow);
-        let (r2, _) = uint256_signed_div_rem(tmp1, quote_token_reserve);
+        let (tmp1) = SafeUint256.mul(quote_token_amount, total_supply);
+        let (r2, _) = SafeUint256.div_rem(tmp1, quote_token_reserve);
 
         let (r1_less_than_r2) = uint256_lt(r1, r2);
         if (r1_less_than_r2 == TRUE) {
@@ -463,13 +459,15 @@ func _calculate_liquidity{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     }
 }
 
-@external
 func _update_k_last{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     base_token_reserve: Uint256, quote_token_reserve: Uint256
 ) {
     alloc_locals;
-    let (k_last, overflow) = uint256_mul(base_token_reserve, quote_token_reserve);
-    assert_uint256_zero(overflow);
+    with_attr error_message("StarkswapV1: amount is not a valid Uint256") {
+        uint256_check(base_token_reserve);
+        uint256_check(quote_token_reserve);
+    }
+    let (k_last) = SafeUint256.mul(base_token_reserve, quote_token_reserve);
     sv_k_last.write(k_last);
     return ();
 }
@@ -490,8 +488,8 @@ func mint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(to: f
     let (base_token_balance) = IERC20.balanceOf(base_token_address, contract_address);
     let (quote_token_balance) = IERC20.balanceOf(quote_token_address, contract_address);
 
-    let (base_token_amount) = uint256_sub(base_token_balance, base_token_reserve);
-    let (quote_token_amount) = uint256_sub(quote_token_balance, quote_token_reserve);
+    let (base_token_amount) = SafeUint256.sub_lt(base_token_balance, base_token_reserve);
+    let (quote_token_amount) = SafeUint256.sub_lt(quote_token_balance, quote_token_reserve);
 
     let (fee_on) = _mint_fee(base_token_reserve, quote_token_reserve);
     let (total_supply) = totalSupply();
@@ -542,12 +540,11 @@ func burn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(to: f
     let (fee_on) = _mint_fee(base_token_reserve, quote_token_reserve);
     let (total_supply) = totalSupply();
 
-    let (r0, overflow) = uint256_mul(liquidity, base_token_balance);
-    let (base_token_amount, _) = uint256_signed_div_rem(r0, total_supply);
-    assert_uint256_zero(overflow);
+    let (r0) = SafeUint256.mul(liquidity, base_token_balance);
+    let (base_token_amount, _) = SafeUint256.div_rem(r0, total_supply);
 
-    let (r1, overflow) = uint256_mul(liquidity, quote_token_balance);
-    let (quote_token_amount, _) = uint256_signed_div_rem(r1, total_supply);
+    let (r1) = SafeUint256.mul(liquidity, quote_token_balance);
+    let (quote_token_amount, _) = SafeUint256.div_rem(r1, total_supply);
 
     with_attr error_message("StarkswapV1: INSUFFICIENT_LIQUIDITY_BURNED") {
         let (is_base_amout_gt_zero) = uint256_lt(Uint256(0, 0), base_token_amount);
@@ -644,11 +641,11 @@ func _calc_input_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     reserve: Uint256, balance: Uint256, amount_out: Uint256
 ) -> (amount_in: Uint256) {
     alloc_locals;
-    let (r0) = uint256_sub(reserve, amount_out);
+    let (r0) = SafeUint256.sub_le(reserve, amount_out);
 
     let (is_balance_gt_rt0) = uint256_lt(r0, balance);
     if (is_balance_gt_rt0 == TRUE) {
-        let (r1) = uint256_sub(balance, r0);
+        let (r1) = SafeUint256.sub_le(balance, r0);
         return (r1,);
     } else {
         return (Uint256(0, 0),);
@@ -659,10 +656,10 @@ func _calc_balance_adjusted{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
     balance: Uint256, amount_in: Uint256
 ) -> (balance_adjusted: Uint256) {
     alloc_locals;
-    let (r0, _) = uint256_mul(balance, Uint256(1000, 0));
-    let (r1, _) = uint256_mul(amount_in, Uint256(3, 0));
+    let (r0) = SafeUint256.mul(balance, Uint256(1000, 0));
+    let (r1) = SafeUint256.mul(amount_in, Uint256(3, 0));
 
-    let (res) = uint256_sub(r0, r1);
+    let (res) = SafeUint256.sub_le(r0, r1);
     return (res,);
 }
 
@@ -675,6 +672,10 @@ func swap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     calldata: felt*,
 ) {
     alloc_locals;
+    with_attr error_message("StarkswapV1: amount is not a valid Uint256") {
+        uint256_check(base_amount_out);
+        uint256_check(quote_amount_out);
+    }
     _lock();
     let (contract_address) = get_contract_address();
 
@@ -734,8 +735,8 @@ func swap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     );
 
     with_attr error_message("StarkswapV1: K") {
-        let (base_reserve_adjusted, _) = uint256_mul(base_token_reserve, Uint256(1000, 0));
-        let (quote_reserve_adjusted, _) = uint256_mul(quote_token_reserve, Uint256(1000, 0));
+        let (base_reserve_adjusted) = SafeUint256.mul(base_token_reserve, Uint256(1000, 0));
+        let (quote_reserve_adjusted) = SafeUint256.mul(quote_token_reserve, Uint256(1000, 0));
 
         let (class_hash) = sv_curve.read();
         let (a0, b0) = normalise_decimals(
@@ -784,8 +785,8 @@ func skim{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(to: f
     let (base_token_balance) = IERC20.balanceOf(base_token_address, contract_address);
     let (quote_token_balance) = IERC20.balanceOf(quote_token_address, contract_address);
 
-    let (base_token_amount) = uint256_sub(base_token_balance, base_token_reserve);
-    let (quote_token_amount) = uint256_sub(quote_token_balance, quote_token_reserve);
+    let (base_token_amount) = SafeUint256.sub_lt(base_token_balance, base_token_reserve);
+    let (quote_token_amount) = SafeUint256.sub_lt(quote_token_balance, quote_token_reserve);
 
     IERC20.transfer(base_token_address, to, base_token_amount);
     IERC20.transfer(quote_token_address, to, quote_token_amount);

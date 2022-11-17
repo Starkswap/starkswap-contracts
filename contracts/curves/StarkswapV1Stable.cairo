@@ -3,11 +3,6 @@
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.uint256 import (
     Uint256,
-    uint256_pow2,
-    uint256_mul,
-    uint256_add,
-    uint256_unsigned_div_rem,
-    uint256_sub,
     uint256_eq,
     uint256_lt,
     uint256_signed_div_rem,
@@ -140,7 +135,7 @@ func _get_y{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     if (current_k_lt_k == 1) {
         // dy = (k - current_k) / _d
         let (numerator) = SafeUint256.sub_le(k, current_k);
-        let (dy, remainder) = uint256_unsigned_div_rem(numerator, _d);
+        let (dy, remainder) = SafeUint256.div_rem(numerator, _d);
         // y1 = y0 + dy
         let (_y1) = SafeUint256.add(y0, dy);
 
@@ -157,7 +152,7 @@ func _get_y{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     } else {
         // dy = (current_k - k) / _d
         let (numerator) = SafeUint256.sub_le(current_k, k);
-        let (dy, remainder) = uint256_unsigned_div_rem(numerator, _d);
+        let (dy, remainder) = SafeUint256.div_rem(numerator, _d);
         // y1 = y0 - dy
         let (_y1) = SafeUint256.sub_le(y0, dy);
 
