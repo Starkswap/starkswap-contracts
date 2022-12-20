@@ -4,14 +4,14 @@ import {
     FactoryFixture,
     factoryFixture,
     INITIAL_SUPPLY,
-    pairFixture,
     RouterFixture,
     routerFixture, TokenFixture,
     tokenFixture
 } from "./shared/fixtures";
-import {expandTo18Decimals, fromStringToHex, fromUint256, toUint256} from "./shared/utils";
+import {expandTo18Decimals, fromStringToHex, toUint256} from "./shared/utils";
 import {Account} from "@shardlabs/starknet-hardhat-plugin/dist/src/account";
 import {StarknetContract} from "@shardlabs/starknet-hardhat-plugin/dist/src/types";
+import {PredeployedAccount} from '@shardlabs/starknet-hardhat-plugin/dist/src/devnet-utils';
 
 const TRANSFER_AMOUNT = 10000n
 const SWAP_IN_AMOUNT = 1000n
@@ -21,7 +21,6 @@ describe('StarkswapV1Router', function () {
     this.timeout(300_000);
 
     let setter: Account
-    let account: Account
     let fFixture: FactoryFixture
     let rFixture: RouterFixture
     let tFixture: TokenFixture
@@ -63,8 +62,12 @@ describe('StarkswapV1Router', function () {
     }
 
     before(async () => {
-        setter = await starknet.deployAccount('OpenZeppelin')
-        account = await starknet.deployAccount('OpenZeppelin')
+        const accounts: PredeployedAccount[] = await starknet.devnet.getPredeployedAccounts()
+
+        setter = await starknet.OpenZeppelinAccount.getAccountFromAddress(
+            accounts[0].address,
+            accounts[0].private_key
+        )
     })
 
 
@@ -72,12 +75,11 @@ describe('StarkswapV1Router', function () {
 
         before(async () => {
             fFixture = await factoryFixture(setter)
-            rFixture = await routerFixture(fFixture)
+            rFixture = await routerFixture(setter, fFixture)
         })
 
         it('quote', async () => {
             const router = rFixture.router
-            const volatileClassHash = fFixture.volatileClassHash
 
             expect((await router.call('quote', {
                 amount_a: toUint256(BigInt(1)),
@@ -237,7 +239,7 @@ describe('StarkswapV1Router', function () {
 
         before(async () => {
             fFixture = await factoryFixture(setter)
-            rFixture = await routerFixture(fFixture)
+            rFixture = await routerFixture(setter, fFixture)
             tFixture = await tokenFixture(setter)
         })
 
@@ -327,7 +329,7 @@ describe('StarkswapV1Router', function () {
 
         beforeEach(async () => {
             fFixture = await factoryFixture(setter)
-            rFixture = await routerFixture(fFixture)
+            rFixture = await routerFixture(setter, fFixture)
             tFixture = await tokenFixture(setter)
         })
 
@@ -403,7 +405,7 @@ describe('StarkswapV1Router', function () {
 
         beforeEach(async () => {
             fFixture = await factoryFixture(setter)
-            rFixture = await routerFixture(fFixture)
+            rFixture = await routerFixture(setter, fFixture)
             tFixture = await tokenFixture(setter)
         })
 

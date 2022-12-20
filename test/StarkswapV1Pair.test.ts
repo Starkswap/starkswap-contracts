@@ -1,9 +1,8 @@
 import {starknet} from "hardhat";
-import {tmpdir} from 'os';
-import Path from "path";
 import {Account} from "@shardlabs/starknet-hardhat-plugin/dist/src/account";
 import {factoryFixture, pairFixture} from "./shared/fixtures";
 import {StarknetContract} from "@shardlabs/starknet-hardhat-plugin/dist/src/types";
+import {PredeployedAccount} from '@shardlabs/starknet-hardhat-plugin/dist/src/devnet-utils';
 import {expandTo18Decimals, fromUint256, toUint256} from "./shared/utils";
 import {expect} from "chai";
 
@@ -19,7 +18,12 @@ describe("StarkswapV1Pair", function () {
     let dumpPath = "dump.pkl"; //Path.join(tmpdir(), `devnet-dump-${new Date().getTime()}`);
 
     before(async function () {
-        wallet = await starknet.deployAccount("OpenZeppelin")
+        const accounts: PredeployedAccount[] = await starknet.devnet.getPredeployedAccounts()
+        wallet = await starknet.OpenZeppelinAccount.getAccountFromAddress(
+            accounts[0].address,
+            accounts[0].private_key
+        )
+
         const fFixture = await factoryFixture(wallet)
         const fixture = await pairFixture(fFixture, wallet)
         factory = fixture.factory;
@@ -61,7 +65,7 @@ describe("StarkswapV1Pair", function () {
         });
 
         let receipt = await starknet.getTransactionReceipt(txHash)
-        let events = await pair.decodeEvents(receipt.events)
+        let events = pair.decodeEvents(receipt.events)
         expect(events).to.deep.equal([
             {name: "Transfer", data: {from_: 0n, to: 42n, value: toUint256(MINIMUM_LIQUIDITY)}},
             {name: "Transfer", data: {from_: 0n, to: BigInt(wallet.address), value: toUint256(expectedLiquidity - MINIMUM_LIQUIDITY)}},
@@ -105,7 +109,6 @@ describe("StarkswapV1Pair", function () {
                     calldata: []
                 })
             } catch (err: any) {
-                expect(err.message).to.deep.contain("Transaction rejected. Error message:");
                 expect(err.message).to.deep.contain("StarkswapV1: K");
             }
 
@@ -138,7 +141,6 @@ describe("StarkswapV1Pair", function () {
                     calldata: []
                 })
             } catch (err: any) {
-                expect(err.message).to.deep.contain("Transaction rejected. Error message:");
                 expect(err.message).to.deep.contain("StarkswapV1: K");
             }
 
@@ -171,9 +173,9 @@ describe("StarkswapV1Pair", function () {
         })
 
         let receipt = await starknet.getTransactionReceipt(txHash)
-        let events = await pair.decodeEvents(receipt.events)
+        let events = pair.decodeEvents(receipt.events)
         expect(events).to.deep.equal([
-            {name: "Transfer", data: {from_: BigInt(pair.address), to: BigInt(wallet.address), value: toUint256(expectedOutputAmount)}},
+            //{name: "Transfer", data: {from_: BigInt(pair.address), to: BigInt(wallet.address), value: toUint256(expectedOutputAmount)}},
             {name: "ev_sync", data: {base_token_reserve: toUint256(baseTokenAmount + swapAmount), quote_token_reserve: toUint256(quoteTokenAmount - expectedOutputAmount)}},
             {name: "ev_swap", data: {
                     sender: BigInt(wallet.address),
@@ -218,9 +220,9 @@ describe("StarkswapV1Pair", function () {
         })
 
         let receipt = await starknet.getTransactionReceipt(txHash)
-        let events = await pair.decodeEvents(receipt.events)
+        let events = pair.decodeEvents(receipt.events)
         expect(events).to.deep.equal([
-            {name: "Transfer", data: {from_: BigInt(pair.address), to: BigInt(wallet.address), value: toUint256(expectedOutputAmount)}},
+            //{name: "Transfer", data: {from_: BigInt(pair.address), to: BigInt(wallet.address), value: toUint256(expectedOutputAmount)}},
             {name: "ev_sync", data: {base_token_reserve: toUint256(baseTokenAmount - expectedOutputAmount), quote_token_reserve: toUint256(quoteTokenAmount + swapAmount)}},
             {name: "ev_swap", data: {
                     sender: BigInt(wallet.address),
@@ -246,7 +248,6 @@ describe("StarkswapV1Pair", function () {
     })
 
     // Uni has a swap:gas test that validates some gas cost, not sure we want/need that
-
     it('burn', async () => {
         const baseTokenAmount = expandTo18Decimals(3n)
         const quoteTokenAmount = expandTo18Decimals(3n)
@@ -260,12 +261,11 @@ describe("StarkswapV1Pair", function () {
 
         const txHash = await wallet.invoke(pair, "burn", {to: wallet.address})
         let receipt = await starknet.getTransactionReceipt(txHash)
-        let events = await pair.decodeEvents(receipt.events)
-
+        let events = pair.decodeEvents(receipt.events)
         expect(events).to.deep.equal([
             {name: "Transfer", data: {from_: BigInt(pair.address), to: BigInt(0), value: toUint256(expectedLiquidity - MINIMUM_LIQUIDITY)}},
-            {name: "Transfer", data: {from_: BigInt(pair.address), to: BigInt(wallet.address), value: toUint256(baseTokenAmount - 1000n)}},
-            {name: "Transfer", data: {from_: BigInt(pair.address), to: BigInt(wallet.address), value: toUint256(quoteTokenAmount - 1000n)}},
+            //{name: "Transfer", data: {from_: BigInt(pair.address), to: BigInt(wallet.address), value: toUint256(baseTokenAmount - 1000n)}},
+            //{name: "Transfer", data: {from_: BigInt(pair.address), to: BigInt(wallet.address), value: toUint256(quoteTokenAmount - 1000n)}},
             {name: "ev_sync", data: {base_token_reserve: toUint256(1000n), quote_token_reserve: toUint256(1000n)}},
             {name: "ev_burn", data: {sender: BigInt(wallet.address), base_amount: toUint256(baseTokenAmount - 1000n), quote_amount: toUint256(quoteTokenAmount - 1000n), to: BigInt(wallet.address)}},
 
@@ -337,7 +337,11 @@ describe("StarkswapV1Pair", function () {
     })
 
     it('feeTo:on', async () => {
-        const other: Account = await starknet.deployAccount("OpenZeppelin")
+        const accounts: PredeployedAccount[] = await starknet.devnet.getPredeployedAccounts()
+        const other  = await starknet.OpenZeppelinAccount.getAccountFromAddress(
+            accounts[2].address,
+            accounts[2].private_key
+        )
         await wallet.invoke(factory, "setFeeTo", {address: other.address})
 
         const baseTokenAmount = expandTo18Decimals(1000n)

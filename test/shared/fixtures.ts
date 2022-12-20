@@ -32,8 +32,9 @@ export interface PairFixture {
 
 export async function tokenFixture(owner: Account): Promise<TokenFixture> {
     const erc20ContractFactory = await starknet.getContractFactory("../token-contract-artifacts/ERC20")
+    await owner.declare(erc20ContractFactory);
 
-    const tokenA = await erc20ContractFactory.deploy({
+    const tokenA = await owner.deploy(erc20ContractFactory, {
         name: shortStringToBigIntUtil("Token A"),
         symbol: shortStringToBigIntUtil("TKA"),
         decimals: 18,
@@ -41,7 +42,7 @@ export async function tokenFixture(owner: Account): Promise<TokenFixture> {
         recipient: owner.address,
         owner: owner.address
     })
-    const tokenB = await erc20ContractFactory.deploy({
+    const tokenB = await owner.deploy(erc20ContractFactory, {
         name: shortStringToBigIntUtil("Token B"),
         symbol: shortStringToBigIntUtil("TKB"),
         decimals: 18,
@@ -56,9 +57,10 @@ export async function tokenFixture(owner: Account): Promise<TokenFixture> {
     }
 }
 
-export async function routerFixture(factoryFixture: FactoryFixture): Promise<RouterFixture> {
+export async function routerFixture(owner: Account, factoryFixture: FactoryFixture): Promise<RouterFixture> {
     const routerContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Router")
-    const routerContract = await routerContractFactory.deploy({
+    await owner.declare(routerContractFactory);
+    const routerContract = await owner.deploy(routerContractFactory, {
         factory_address: factoryFixture.factory.address,
         pair_class_hash: factoryFixture.pairClassHash,
     })
@@ -78,7 +80,8 @@ export async function factoryFixture(owner: Account): Promise<FactoryFixture> {
     const stableClassHash = await owner.declare(stableContractFactory)
     const volatileClassHash = await owner.declare(volatileContractFactory)
 
-    const factoryContract = await factoryContractFactory.deploy({
+    await owner.declare(factoryContractFactory)
+    const factoryContract = await owner.deploy(factoryContractFactory, {
         setter: owner.address,
         pair_class_hash: pairClassHash,
     })
@@ -122,7 +125,7 @@ export async function pairFixture(factoryFixture: FactoryFixture, owner: Account
 
     const pairAddress = fromStringToHex(res.pair_address)
 
-    const pair = await pairContractFactory.getContractAt(pairAddress)
+    const pair = pairContractFactory.getContractAt(pairAddress)
 
     const orderedTokens = orderBySize(tokenA, tokenB)
 

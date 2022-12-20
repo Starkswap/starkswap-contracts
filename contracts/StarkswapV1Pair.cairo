@@ -365,7 +365,6 @@ func _update_cumulative_last_reserves{
     return ();
 }
 
-@external
 func _update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     base_token_balance: Uint256,
     quote_token_balance: Uint256,
@@ -383,12 +382,18 @@ func _update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (block_timestamp_last: felt) = sv_block_timestamp_last.read();
     let time_elapsed = block_timestamp - block_timestamp_last;
 
+    let (base_reserve_cumulative_last_old) = sv_base_token_reserve_cumulative_last.read();
+    let (quote_reserve_cumulative_last_old) = sv_quote_token_reserve_cumulative_last.read();
+
     let (base_reserve_cumulative_last) = SafeUint256.mul(
         base_token_reserve, Uint256(time_elapsed, 0)
     );
     let (quote_reserve_cumulative_last) = SafeUint256.mul(
         quote_token_reserve, Uint256(time_elapsed, 0)
     );
+
+    let (base_reserve_cumulative_last) = SafeUint256.add(base_reserve_cumulative_last, base_reserve_cumulative_last_old);
+    let (quote_reserve_cumulative_last) = SafeUint256.add(quote_reserve_cumulative_last, quote_reserve_cumulative_last_old);
 
     _update_cumulative_last_reserves(
         time_elapsed,

@@ -11,21 +11,21 @@
     "url": "https://github.com/Starkswap/starkswap-contracts.git"
   },
   "keywords": [
-      "starkswap",
-      "ethereum",
-      "cairo-lang",
-      "cairo",
-      "starknet",
-      "starkware"
+    "starkswap",
+    "ethereum",
+    "cairo-lang",
+    "cairo",
+    "starknet",
+    "starkware"
   ],
   "files": [
     "/starknet-artifacts/contracts"
   ],
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.6",
-    "@shardlabs/starknet-hardhat-plugin": "^0.6.8",
+    "@shardlabs/starknet-hardhat-plugin": "^0.7.1",
     "@types/chai": "^4.3.1",
-    "@types/mocha": "^9.1.1",
+    "@types/mocha": "^10.0.1",
     "@types/node": "^18.7.4",
     "chai": "^4.3.4",
     "ethers": "^5.6.9",
