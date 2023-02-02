@@ -1,7 +1,6 @@
-from starkware.cairo.common.uint256 import Uint256
-
+#[derive(Copy, Drop)]
 struct Observation {
     block_timestamp: felt,
-    cumulative_base_reserve: Uint256,
-    cumulative_quote_reserve: Uint256,
+    cumulative_base_reserve: u256,
+    cumulative_quote_reserve: u256,
 }
