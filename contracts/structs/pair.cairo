@@ -1,5 +1,4 @@
-from contracts.structs.token import Token
-
+#[derive(Copy, Drop)]
 struct Pair {
     pair: Token,
     base: Token,

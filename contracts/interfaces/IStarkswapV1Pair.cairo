@@ -1,86 +1,58 @@
-%lang starknet
-
-from starkware.cairo.common.uint256 import Uint256
-from contracts.structs.observation import Observation
-
-@contract_interface
-namespace IStarkswapV1Pair {
+#[abi]
+trait IStarkswapV1Pair {
     // ######### ERC20 functions ##########
 
-    func name() -> (name: felt) {
-    }
+    fn  name() -> felt;
 
-    func symbol() -> (symbol: felt) {
-    }
+    fn  symbol() -> felt;
 
-    func decimals() -> (decimals: felt) {
-    }
+    fn  decimals() -> felt;
 
-    func totalSupply() -> (totalSupply: Uint256) {
-    }
+    fn  totalSupply() -> u256;
 
-    func balanceOf(account: felt) -> (balance: Uint256) {
-    }
+    fn  balanceOf(account: felt) -> u256;
 
-    func allowance(owner: felt, spender: felt) -> (remaining: Uint256) {
-    }
+    fn  allowance(owner: felt, spender: felt) -> u256;
 
-    func approve(spender: felt, amount: Uint256) -> (success: felt) {
-    }
+    fn  approve(spender: felt, amount: u256) -> felt;
 
-    func transfer(recipient: felt, amount: Uint256) -> (success: felt) {
-    }
+    fn  transfer(recipient: felt, amount: u256) -> felt;
 
-    func transferFrom(sender: felt, recipient: felt, amount: Uint256) -> (success: felt) {
-    }
+    fn  transferFrom(sender: felt, recipient: felt, amount: u256) -> felt;
 
     // ######### END ERC20 functions ##########
 
-    func MINIMUM_LIQUIDITY() -> (minimum: Uint256) {
-    }
+    fn  MINIMUM_LIQUIDITY() -> u256;
 
-    func factory() -> (address: felt) {
-    }
+    fn  factory() -> felt;
 
-    func baseToken() -> (address: felt) {
-    }
+    fn  baseToken() -> felt;
 
-    func quoteToken() -> (address: felt) {
-    }
+    fn  quoteToken() -> felt;
 
-    func curve() -> (curve_class_hash: felt, curve_name: felt) {
-    }
+    fn  curve() -> (curve_class_hash: felt, curve_name: felt);
 
-    func getReserves() -> (
-        base_token_reserve: Uint256, quote_token_reserve: Uint256, block_timestamp_last: felt
-    ) {
-    }
+    fn  getReserves() -> (
+        base_token_reserve: u256, quote_token_reserve: u256, block_timestamp_last: felt
+    );
 
-    func getObservations(num_observations: felt) -> (
+    fn  getObservations(num_observations: felt) -> (
         observations_len: felt, observations: Observation*
-    ) {
-    }
+    );
 
-    func lastObservations() -> (observation: Observation) {
-    }
+    fn  lastObservations() -> Observation;
 
-    func kLast() -> (k_last: Uint256) {
-    }
+    fn  kLast() -> u256;
 
-    func mint(to: felt) -> (liquidity: Uint256) {
-    }
+    fn  mint(to: felt) -> u256;
 
-    func burn(to: felt) -> (base_token_amount: Uint256, quote_token_amount: Uint256) {
-    }
+    fn  burn(to: felt) -> (base_token_amount: u256, quote_token_amount: u256);
 
-    func swap(
-        base_out: Uint256, quote_out: Uint256, to: felt, calldata_len: felt, calldata: felt*
-    ) {
-    }
+    fn  swap(
+        base_out: u256, quote_out: u256, to: felt, calldata_len: felt, calldata: felt*
+    );
 
-    func skim(to: felt) {
-    }
+    fn  skim(to: felt);
 
-    func sync() {
-    }
+    fn  sync();
 }

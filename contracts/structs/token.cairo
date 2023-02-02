@@ -1,4 +1,5 @@
- struct Token {
+#[derive(Copy, Drop)]
+struct Token {
      address: felt,
      name: felt,
      symbol: felt,

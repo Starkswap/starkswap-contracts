@@ -1,50 +1,30 @@
-%lang starknet
+#[abi]
+trait IStarkswapV1Factory {
+    fn feeTo() -> felt;
 
-from starkware.cairo.common.uint256 import Uint256
-from contracts.structs.pair import Pair
-from contracts.structs.balance import Balance
+    fn pairClassHash() -> felt;
 
-@contract_interface
-namespace IStarkswapV1Factory {
-    func feeTo() -> (address: felt) {
-    }
+    fn feeToSetter() -> felt;
 
-    func pairClassHash() -> (pair_class_hash: felt) {
-    }
+        fn getCurve(curve_class_hash: felt) -> felt;
 
-    func feeToSetter() -> (address: felt) {
-    }
+        fn getPair(token_a_address: felt, token_b_address: felt, curve: felt) -> felt;
 
-    func getCurve(curve_class_hash: felt) -> (exists: felt) {
-    }
+        fn allPairs(index: felt) -> felt;
 
-    func getPair(token_a_address: felt, token_b_address: felt, curve: felt) -> (pair_address: felt) {
-    }
+        fn allPairsLength() -> felt;
 
-    func allPairs(index: felt) -> (pair_address: felt) {
-    }
+        fn getAllPairs() -> (pairs_len: felt, pairs: Pair*);
 
-    func allPairsLength() -> (all_pairs_length: felt) {
-    }
+        fn createPair(token_a_address: felt, token_b_address: felt, curve: felt) -> felt;
 
-    func getAllPairs() -> (pairs_len: felt, pairs: Pair*) {
-    }
+        fn setFeeTo(address: felt) -> felt;
 
-    func createPair(token_a_address: felt, token_b_address: felt, curve: felt) -> (pair_address: felt) {
-    }
+        fn setFeeToSetter(address: felt) -> felt;
 
-    func setFeeTo(address: felt) -> (address: felt) {
-    }
+        fn setPairClassHash(pair_class_hash: felt) -> felt;
 
-    func setFeeToSetter(address: felt) -> (address: felt) {
-    }
+        fn addCurve(curve_class_hash: felt) -> felt;
 
-    func setPairClassHash(pair_class_hash: felt) -> (pair_class_hash: felt) {
-    }
-
-    func addCurve(curve_class_hash: felt) -> (exists: felt) {
-    }
-
-    func getBalances(account: felt) -> (balances_len: felt, balances: Balance*) {
-    }
+        fn getBalances(account: felt) -> (balances_len: felt, balances: Balance*);
 }

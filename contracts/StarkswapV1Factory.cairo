@@ -1,76 +1,67 @@
-%lang starknet
+
 %builtins pedersen range_check ecdsa
 
-from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.bool import FALSE, TRUE
-from starkware.cairo.common.math import assert_not_zero, assert_nn_le, assert_nn, assert_not_equal
-from starkware.starknet.common.syscalls import get_caller_address, deploy
-from starkware.cairo.common.alloc import alloc
-from starkware.cairo.common.uint256 import Uint256
 
-from contracts.utils.sort import _sort_tokens
 
-from contracts.structs.pair import Pair
-from contracts.structs.balance import Balance
-from contracts.structs.token import Token
-from openzeppelin.token.erc20.IERC20 import IERC20
-from openzeppelin.upgrades.library import Proxy
-from contracts.interfaces.IStarkswapV1Pair import IStarkswapV1Pair
+
+
+
+
+
+
+
+
+
+
+
+
 
 //####################################################################
 // Storage
 //####################################################################
 
 @storage_var
-func sv_pair(base_address: felt, quote_address: felt, curve: felt) -> (pair_address: felt) {
+fn sv_pair(base_address: felt, quote_address: felt, curve: felt) -> (pair_address: felt) {
 }
 
 @storage_var
-func sv_curve_class_hash(curve_class_hash: felt) -> (exists: felt) {
+fn sv_curve_class_hash(curve_class_hash: felt) -> (exists: felt) {
 }
 
 @storage_var
-func sv_fee_to_setter() -> (fee_too_setter_address: felt) {
+fn sv_fee_to_setter() -> (fee_too_setter_address: felt) {
 }
 
 @storage_var
-func sv_fee_to() -> (fee_too_address: felt) {
+fn sv_fee_to() -> (fee_too_address: felt) {
 }
 
 @storage_var
-func sv_pair_by_index(index: felt) -> (pair_address: felt) {
+fn sv_pair_by_index(index: felt) -> (pair_address: felt) {
 }
 
 @storage_var
-func sv_pairs_count() -> (all_pairs_length: felt) {
+fn sv_pairs_count() -> (all_pairs_length: felt) {
 }
 
 @storage_var
-func sv_pair_class_hash() -> (pair_class_hash: felt) {
-}
-
-@storage_var
-func sv_pair_proxy_class_hash() -> (pair_proxy_class_hash: felt) {
+fn sv_pair_class_hash() -> (pair_class_hash: felt) {
 }
 
 //####################################################################
 // Constructor
 //####################################################################
 
-@external
-func initializer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    pair_proxy_class_hash: felt, pair_class_hash: felt, setter: felt
+#[constructor]
+fn constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    setter: felt, pair_class_hash: felt
 ) {
     assert_not_zero(setter);
     sv_fee_to_setter.write(setter);
 
-    assert_not_zero(pair_proxy_class_hash);
-    sv_pair_proxy_class_hash.write(pair_proxy_class_hash);
-
     assert_not_zero(pair_class_hash);
     sv_pair_class_hash.write(pair_class_hash);
 
-    Proxy.initializer(setter);
     return ();
 }
 
@@ -78,43 +69,36 @@ func initializer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // View functions
 //####################################################################
 
-@view
-func pairClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+#[view]
+fn pairClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     pair_class_hash: felt
 ) {
     return sv_pair_class_hash.read();
 }
 
-@view
-func pairProxyClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    pair_proxy_class_hash: felt
-) {
-    return sv_pair_proxy_class_hash.read();
-}
-
-@view
-func getCurve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+#[view]
+fn getCurve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     curve_class_hash: felt
 ) -> (exists: felt) {
     return sv_curve_class_hash.read(curve_class_hash);
 }
 
-@view
-func feeTo{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (address: felt) {
+#[view]
+fn feeTo{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (address: felt) {
     let (address: felt) = sv_fee_to.read();
     return (address,);
 }
 
-@view
-func feeToSetter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+#[view]
+fn feeToSetter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     address: felt
 ) {
     let (address: felt) = sv_fee_to_setter.read();
     return (address,);
 }
 
-@view
-func getPair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+#[view]
+fn getPair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     token_a_address: felt, token_b_address: felt, curve: felt
 ) -> (pair_address: felt) {
     let (base_address: felt, quote_address: felt) = _sort_tokens(token_a_address, token_b_address);
@@ -123,8 +107,8 @@ func getPair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return (pair_address,);
 }
 
-@view
-func allPairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(index: felt) -> (
+#[view]
+fn allPairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(index: felt) -> (
     pair_address: felt
 ) {
     let (all_pairs_counter: felt) = sv_pairs_count.read();
@@ -136,15 +120,15 @@ func allPairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(i
     return (pair_address,);
 }
 
-@view
-func allPairsLength{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+#[view]
+fn allPairsLength{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     all_pairs_length: felt
 ) {
     let (all_pairs_counter: felt) = sv_pairs_count.read();
     return (all_pairs_counter,);
 }
 
-func _get_pairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+fn _get_pairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     pairs_len: felt, pairs: Pair*
 ) {
     if (pairs_len == -1) {
@@ -178,8 +162,8 @@ func _get_pairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     return _get_pairs(pairs_len - 1, pairs);
 }
 
-@view
-func getAllPairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+#[view]
+fn getAllPairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     pairs_len: felt, pairs: Pair*
 ) {
     alloc_locals;
@@ -192,7 +176,7 @@ func getAllPairs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return (pairs_len, pairs);
 }
 
-func _get_balances{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+fn _get_balances{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     account: felt, balances_len: felt, balances: Balance*
 ) {
     if (balances_len == -1) {
@@ -200,19 +184,19 @@ func _get_balances{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     }
 
     let (pair_address: felt) = sv_pair_by_index.read(balances_len);
-    let (pair_balance: Uint256) = IStarkswapV1Pair.balanceOf(
+    let (pair_balance: u256) = IStarkswapV1Pair.balanceOf(
         contract_address=pair_address, account=account
     );
     let (base_address: felt) = IStarkswapV1Pair.baseToken(contract_address=pair_address);
-    let (base_balance: Uint256) = IERC20.balanceOf(contract_address=base_address, account=account);
+    let (base_balance: u256) = IERC20.balanceOf(contract_address=base_address, account=account);
     let (quote_address: felt) = IStarkswapV1Pair.quoteToken(contract_address=pair_address);
-    let (quote_balance: Uint256) = IERC20.balanceOf(
+    let (quote_balance: u256) = IERC20.balanceOf(
         contract_address=quote_address, account=account
     );
 
-    let (total_supply: Uint256) = IStarkswapV1Pair.totalSupply(contract_address=pair_address);
+    let (total_supply: u256) = IStarkswapV1Pair.totalSupply(contract_address=pair_address);
     let (
-        base_token_reserve: Uint256, quote_token_reserve: Uint256, _
+        base_token_reserve: u256, quote_token_reserve: u256, _
     ) = IStarkswapV1Pair.getReserves(contract_address=pair_address);
 
     let balance: Balance = Balance(
@@ -230,8 +214,8 @@ func _get_balances{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     return _get_balances(account, balances_len - 1, balances);
 }
 
-@view
-func getBalances{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+#[view]
+fn getBalances{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     account: felt
 ) -> (balances_len: felt, balances: Balance*) {
     alloc_locals;
@@ -249,8 +233,8 @@ func getBalances{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // External functions
 //####################################################################
 
-@external
-func setFeeTo{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(address: felt) -> (
+#[external]
+fn setFeeTo{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(address: felt) -> (
     address: felt
 ) {
     with_attr error_message("StarkswapV1Factory: FORBIDDEN") {
@@ -263,8 +247,8 @@ func setFeeTo{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(a
     return (address,);
 }
 
-@external
-func setFeeToSetter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+#[external]
+fn setFeeToSetter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     address: felt
 ) -> (address: felt) {
     with_attr error_message("StarkswapV1Factory: FORBIDDEN") {
@@ -277,8 +261,8 @@ func setFeeToSetter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     return (address,);
 }
 
-@external
-func setPairClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+#[external]
+fn setPairClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     pair_class_hash: felt
 ) -> (pair_class_hash: felt) {
     with_attr error_message("StarkswapV1Factory: FORBIDDEN") {
@@ -291,8 +275,8 @@ func setPairClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     return (pair_class_hash,);
 }
 
-@external
-func addCurve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+#[external]
+fn addCurve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     curve_class_hash: felt
 ) -> (exists: felt) {
     with_attr error_message("StarkswapV1Factory: FORBIDDEN") {
@@ -305,8 +289,8 @@ func addCurve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return (curve_class_hash,);
 }
 
-@external
-func createPair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+#[external]
+fn createPair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     token_a_address: felt, token_b_address: felt, curve: felt
 ) -> (pair_address: felt) {
     alloc_locals;
@@ -342,20 +326,16 @@ func createPair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     return (pair_address,);
 }
 
-func _deploy_starkswap_v1_pair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+fn _deploy_starkswap_v1_pair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     base_address: felt, quote_address: felt, curve: felt
 ) -> (contract_address: felt) {
     let (pair_class_hash) = sv_pair_class_hash.read();
-    let (pair_proxy_class_hash) = sv_pair_proxy_class_hash.read();
-    let (fee_to_setter_address) = feeToSetter();
-
-    let (proxy_address) = deploy(
-        class_hash=pair_proxy_class_hash,
+    let (contract_address) = deploy(
+        class_hash=pair_class_hash,
         contract_address_salt=0,
-        constructor_calldata_size=5,
-        constructor_calldata=cast(new (pair_class_hash, base_address, quote_address, curve, fee_to_setter_address), felt*),
-        deploy_from_zero=FALSE
+        constructor_calldata_size=3,
+        constructor_calldata=cast(new (base_address, quote_address, curve), felt*),
+        deploy_from_zero=FALSE,
     );
-
-    return (proxy_address,);
+    return (contract_address,);
 }
