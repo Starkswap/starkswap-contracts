@@ -1,21 +1,9 @@
-
-
-
-
-    u256,
-    uint256_eq,
-    uint256_lt,
-    uint256_signed_div_rem,
-)
-
-
-
 // Number of iterations to run over Newton's method in order to find the y value that satisfies it
-const STABLE_CURVE_ESTIMATION_ITERATIONS = 256;
+const STABLE_CURVE_ESTIMATION_ITERATIONS: felt252 = 256;
 
 #[view]
-fn name() -> (name: felt) {
-    return ('x3yy3xk',);
+fn name() -> felt252 {
+    return 'x3yy3xk';
 }
 
 #[view]

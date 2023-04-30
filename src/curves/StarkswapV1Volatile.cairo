@@ -1,13 +1,6 @@
-
-
-
-
-
-
-
 #[view]
-fn name() -> (name: felt) {
-    return ('xyk',);
+fn name() -> felt252 {
+    return 'xyk';
 }
 
 #[view]
