@@ -1,3 +1,6 @@
+use integer::u256_from_felt252;
+
+
 // Number of iterations to run over Newton's method in order to find the y value that satisfies it
 const STABLE_CURVE_ESTIMATION_ITERATIONS: felt252 = 256;
 
@@ -7,77 +10,44 @@ fn name() -> felt252 {
 }
 
 #[view]
-fn get_amount_out{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    amount_in: u256, reserve_in: u256, reserve_out: u256
-) -> (amount_out: u256) {
-    alloc_locals;
+fn get_amount_out(amount_in: u256, reserve_in: u256, reserve_out: u256) -> u256 {
+    let amount_in_minus_fee = amount_in * u256_from_felt252(997) / u256_from_felt252(1000);
 
-    let (r0) = SafeUint256.mul(amount_in, u256(997, 0));
-    let (amount_in_minus_fee, _) = uint256_signed_div_rem(r0, u256(1000, 0));
+    let k = get_k(reserve_in, reserve_out);
+    let adjusted_x: u256 = amount_in_minus_fee + reserve_in;
+    let required_y: u256 = _get_y(k, adjusted_x, reserve_out, STABLE_CURVE_ESTIMATION_ITERATIONS);
 
-    let (k: u256) = get_k(reserve_in, reserve_out);
-    let (adjusted_x: u256) = SafeUint256.add(amount_in_minus_fee, reserve_in);
-    let (required_y: u256) = _get_y(
-        k, adjusted_x, reserve_out, STABLE_CURVE_ESTIMATION_ITERATIONS
-    );
-
-    let (amount_out) = SafeUint256.sub_le(reserve_out, required_y);
-    return (amount_out,);
+    return reserve_out - required_y;
 }
 
 #[view]
-fn get_amount_in{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    amount_out: u256, reserve_in: u256, reserve_out: u256, fees_times_1k: felt
-) -> (amount_in: u256) {
-    alloc_locals;
+fn get_amount_in(
+    amount_out: u256, reserve_in: u256, reserve_out: u256, fees_times_1k: felt252
+) -> u256 {
+    let k: u256 = get_k(reserve_in, reserve_out);
 
-    let (k: u256) = get_k(reserve_in, reserve_out);
+    let adjusted_x: u256 = reserve_out - amount_out;
+    let required_y: u256 = _get_y(k, adjusted_x, reserve_in, STABLE_CURVE_ESTIMATION_ITERATIONS);
 
-    let (adjusted_x: u256) = SafeUint256.sub_le(reserve_out, amount_out);
-    let (required_y: u256) = _get_y(
-        k, adjusted_x, reserve_in, STABLE_CURVE_ESTIMATION_ITERATIONS
-    );
+    let amount_in = required_y - reserve_in;
 
-    let (amount_in) = SafeUint256.sub_le(required_y, reserve_in);
+    let r0 = amount_in * u256_from_felt252(1003);
+    let amount_in_plus_fee = r0 / u256_from_felt252(1000);
 
-    let (r0) = SafeUint256.mul(amount_in, u256(1003, 0));
-    let (amount_in_plus_fee, _) = uint256_signed_div_rem(r0, u256(1000, 0));
-
-    return (amount_in=amount_in_plus_fee);
+    return amount_in_plus_fee;
 }
 
 #[view]
-fn get_k{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    reserve_a: u256, reserve_b: u256
-) -> (k: u256) {
-    alloc_locals;
-    let (base_pow2) = SafeUint256.mul(reserve_a, reserve_a);
-    let (base_pow3) = SafeUint256.mul(reserve_a, base_pow2);
-    let (A) = SafeUint256.mul(base_pow3, reserve_b);
-
-    let (quote_pow2) = SafeUint256.mul(reserve_b, reserve_b);
-    let (quote_pow3) = SafeUint256.mul(reserve_b, quote_pow2);
-    let (B) = SafeUint256.mul(quote_pow3, reserve_a);
-
-    let (k) = SafeUint256.add(A, B);
-    return (k,);
+fn get_k(reserve_a: u256, reserve_b: u256) -> u256 {
+    let A = (reserve_a * reserve_a * reserve_a) * reserve_b;
+    let B = (reserve_b * reserve_b * reserve_b) * reserve_a;
+    return A + B;
 }
 
 // Compute derivative of x3y + y3x with regards to y
 // The derivative is f'(x, y) = x^3 + 3 * y^2 * x
-fn _derivative_x3y_y3x{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    x: u256, y: u256
-) -> (res: u256) {
-    alloc_locals;
-
-    let (xy) = SafeUint256.mul(x, y);
-    let (x2) = SafeUint256.mul(x, x);
-    let (y2x) = SafeUint256.mul(xy, y);
-    let (_3y2x) = SafeUint256.mul(y2x, u256(3, 0));
-    let (x3) = SafeUint256.mul(x2, x);
-    let (x3_3y2x) = SafeUint256.add(x3, _3y2x);
-
-    return (res=x3_3y2x);
+fn _derivative_x3y_y3x(x: u256, y: u256) -> u256 {
+    return (x * x * x) + u256_from_felt252(3) * y * y * x;
 }
 
 // @dev Get the new y based on the stable bonding curve (k=x3y+y3x) using Newton's method:
@@ -95,65 +65,46 @@ fn _derivative_x3y_y3x{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 // @param iterations Number of times to iterate over Newton's method
 // view function for testing
 #[view]
-fn _get_y{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    k: u256, x: u256, y0: u256, iterations: felt
-) -> (y: u256) {
-    alloc_locals;
-
+fn _get_y(k: u256, x: u256, y0: u256, iterations: felt252) -> u256 {
     if (iterations == 0) {
-        return (y=y0);
+        return y0;
     }
 
-    let (local current_k: u256) = get_k(x, y0);
+    let current_k: u256 = get_k(x, y0);
     // TODO: Should we change this to diff <= 1 ??
-    let (local k_equal_current_k: felt) = uint256_eq(current_k, k);
-    if (k_equal_current_k != 0) {
-        return (y=y0);
+    if (current_k == k) {
+        return y0;
     }
 
-    let (local _d: u256) = _derivative_x3y_y3x(x, y0);
-    local numerator: u256;
-    local dy: u256;
-    local remainder: u256;
-    local _y1: u256;
-    local y1: u256;
-    let (local current_k_lt_k: felt) = uint256_lt(current_k, k);
-
-    // current_k < k
-    if (current_k_lt_k == 1) {
+    let _d: u256 = _derivative_x3y_y3x(x, y0);
+    if (current_k < k) {
         // dy = (k - current_k) / _d
-        let (numerator) = SafeUint256.sub_le(k, current_k);
-        let (dy, remainder) = SafeUint256.div_rem(numerator, _d);
+        let dy = (k - current_k) / _d;
         // y1 = y0 + dy
-        let (_y1) = SafeUint256.add(y0, dy);
+        let _y1 = y0 + dy;
 
         // Return if there's no change in our y estimation (i.e. y0==y1)
-        let (y0_eq_y1) = uint256_eq(y0, _y1);
-        if (y0_eq_y1 == 1) {
-            return (y=_y1);
+        if (y0 == _y1) {
+            return _y1;
         }
 
         // Need to get y1 again b/c reference revocation..
-        let (y1) = SafeUint256.add(y0, dy);
-
-        // current_k > k
+        let y1 = _y1;
+        return _get_y(k, x, y1, iterations - 1);
+    // current_k > k
     } else {
         // dy = (current_k - k) / _d
-        let (numerator) = SafeUint256.sub_le(current_k, k);
-        let (dy, remainder) = SafeUint256.div_rem(numerator, _d);
+        let dy = (current_k - k) / _d;
         // y1 = y0 - dy
-        let (_y1) = SafeUint256.sub_le(y0, dy);
+        let _y1 = y0 - dy;
 
         // Return if there's no change in our y estimation (i.e. y0==y1)
-        let (y0_eq_y1) = uint256_eq(y0, _y1);
-        if (y0_eq_y1 == 1) {
-            return (y=_y1);
+        if (y0 == _y1) {
+            return _y1;
         }
 
         // Need to get y1 again b/c reference revocation..
-        let (y1) = SafeUint256.sub_le(y0, dy);
+        let y1 = y0 - dy;
+        return _get_y(k, x, y1, iterations - 1);
     }
-
-    let (new_y) = _get_y(k, x, y1, iterations - 1);
-    return (y=new_y);
 }
