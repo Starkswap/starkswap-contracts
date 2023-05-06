@@ -1,102 +1,206 @@
-//%builtins pedersen range_check ecdsa
+#[contract]
+mod StarkswapV1Router {
+    use starknet::get_caller_address;
+    use starknet::ContractAddress;
+    use starknet::ClassHash;
+    use starknet::library_call_syscall;
+    use starknet::contract_address_try_from_felt252;
+    use starknet::call_contract_syscall;
+    use zeroable::Zeroable;
+    use integer::BoundedInt;
+    use integer::u256_from_felt252;
+    use integer::u128_to_felt252;
+    use array::ArrayTrait;
+    use starkswap_contracts::interfaces::IStarkswapV1Curve::IStarkswapV1Curve;
+    use starkswap_contracts::interfaces::IStarkswapV1Factory::IStarkswapV1Factory;
+    use starkswap_contracts::utils::decimals::make_18_dec;
+    use starkswap_contracts::utils::decimals::unmake_18_dec;
+    use starkswap_contracts::structs::route::Route;
+    use starkswap_contracts::utils::sort::_sort_tokens;
 
-//u256,
-//uint256_le,
-//uint256_eq
-//)
+    struct Storage {
+        sv_factory_address: ContractAddress,
+        sv_pair_class_hash: ClassHash,
+    }
 
-////####################################################################
-//// Storage
-////####################################################################
+    #[constructor]
+    fn constructor(
+        factory_address: ContractAddress,
+        pair_class_hash: ClassHash,
+    ) {
+        sv_factory_address::write(factory_address);
+        sv_pair_class_hash::write(pair_class_hash);
+    }
 
-//@storage_var
-//fn sv_factory() -> (address: felt) {
-//}
+    #[view]
+    fn factory() -> ContractAddress {
+        return sv_factory_address::read();
+    }
 
-//@storage_var
-//fn sv_pair_class_hash() -> (pair_class_hash: felt) {
-//}
+    #[view]
+    fn pairClassHash() -> ClassHash { return sv_pair_class_hash::read(); }
 
-////####################################################################
-//// Constructor
-////####################################################################
+    #[view]
+    fn getAmountOut(amount_in: u256,
+                    reserve_in: u256,
+                    reserve_out: u256,
+                    decimals_in: felt252,
+                    decimals_out: felt252,
+                    curve: ClassHash
+    ) -> u256 {
+        assert(amount_in > u256_from_felt252(0), 'INSUFFICIENT_INPUT_AMOUNT');
+        assert(reserve_in > u256_from_felt252(0), 'INSUFFICIENT_LIQUIDITY');
+        assert(reserve_out > u256_from_felt252(0), 'INSUFFICIENT_LIQUIDITY');
+        let mut args = ArrayTrait::new();
+        let ai = make_18_dec(amount_in, decimals_in);
+        args.append(u128_to_felt252(ai.low));
+        args.append(u128_to_felt252(ai.high));
+        let ri = make_18_dec(reserve_in, decimals_in);
+        args.append(u128_to_felt252(ri.low));
+        args.append(u128_to_felt252(ri.high));
+        let ro = make_18_dec(reserve_out, decimals_out);
+        args.append(u128_to_felt252(ro.low));
+        args.append(u128_to_felt252(ro.high));
+        let res = library_call_syscall(curve, 'get_amount_out', args.span()).unwrap_syscall();
+        // TODO: find out if u256 responses are packed into multiple felt252 for syscalls or if the below is sufficient
+        let amount_out = u256_from_felt252(*res[0]);
+        return unmake_18_dec(amount_out, decimals_out);
+    }
 
-//#[constructor]
-//fn constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//factory_address: felt, pair_class_hash: felt
-//) {
-//assert_not_zero(factory_address);
-//sv_factory.write(factory_address);
+    #[view]
+    fn getAmountIn(amount_out: u256,
+                   reserve_in: u256,
+                   reserve_out: u256,
+                   decimals_in: felt252,
+                   decimals_out: felt252,
+                   curve: ClassHash
+    ) -> u256 {
+        assert(amount_out > u256_from_felt252(0), 'INSUFFICIENT_OUTPUT_AMOUNT');
+        assert(reserve_in > u256_from_felt252(0), 'INSUFFICIENT_LIQUIDITY');
+        assert(reserve_out > u256_from_felt252(0), 'INSUFFICIENT_LIQUIDITY');
+        let mut args = ArrayTrait::new();
+        let ao = make_18_dec(amount_out, decimals_out);
+        args.append(u128_to_felt252(ao.low));
+        args.append(u128_to_felt252(ao.high));
+        let ri = make_18_dec(reserve_in, decimals_in);
+        args.append(u128_to_felt252(ri.low));
+        args.append(u128_to_felt252(ri.high));
+        let ro = make_18_dec(reserve_out, decimals_out);
+        args.append(u128_to_felt252(ro.low));
+        args.append(u128_to_felt252(ro.high));
+        let res = library_call_syscall(curve, 'get_amount_in', args.span()).unwrap_syscall();
+        // TODO: find out if u256 responses are packed into multiple felt252 for syscalls or if the below is sufficient
+        return u256_from_felt252(*res[0]);
+    }
 
-//assert_not_zero(pair_class_hash);
-//sv_pair_class_hash.write(pair_class_hash);
+    // #[view]
+    // fn getAmountsOut(
+    //     amount_in: u256, routes_len: felt252, routes: Array<Route>
+    // ) -> (felt252, Array<u256>) {
+    //
+    // }
+    //
+    // #[view]
+    // fn getAmountsIn(
+    //     amount_out: u256, routes_len: felt252, routes: Array<Route>
+    // ) -> (felt252, Array<u256>) {
+    //
+    // }
+    //
+    // #[external]
+    // fn addLiquidity(
+    //     token_a_address: felt252,
+    //     token_b_address: felt252,
+    //     curve: felt252,
+    //     amount_a_desired: u256,
+    //     amount_b_desired: u256,
+    //     amount_a_min: u256,
+    //     amount_b_min: u256,
+    //     to: felt252,
+    //     deadline: felt252,
+    // ) -> (u256, u256, u256) {
+    //
+    // }
+    //
+    // #[external]
+    // fn removeLiquidity(
+    //     token_a_address: felt252,
+    //     token_b_address: felt252,
+    //     curve: felt252,
+    //     liquidity: u256,
+    //     amount_a_min: u256,
+    //     amount_b_min: u256,
+    //     to: felt252,
+    //     deadline: felt252,
+    // ) -> (u256, u256) {
+    // }
+    //
+    // #[external]
+    // fn swapExactTokensForTokens(
+    //     amount_in: u256,
+    //     amount_out_min: u256,
+    //     routes_len: felt252,
+    //     routes: Array<Route>,
+    //     to: felt252,
+    //     deadline: felt252,
+    // ) -> (felt252, Array<u256>) {
+    //
+    // }
+    //
+    // #[external]
+    // fn swapTokensForExactTokens(
+    //     amount_out: u256,
+    //     amount_in_max: u256,
+    //     routes_len: felt252,
+    //     routes: Array<Route>,
+    //     to: felt252,
+    //     deadline: felt252,
+    // ) -> (felt252, Array<u256>) {
+    //
+    // }
 
-//return ();
-//}
+    #[internal]
+    fn _pair_for(
+        token_a_address: ContractAddress,
+        token_b_address: ContractAddress,
+        curve: felt252
+    ) -> felt252 {
+        //TODO: Can this be replicated in cairo 1 or do we need to simply make a factory call?
+        // let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
+        // return calculate_contract_address(
+        //     salt=0,
+        //     class_hash=sv_pair_class_hash::read(),
+        //     constructor_calldata_size=3,
+        //     constructor_calldata=(base_address, quote_address, curve),
+        //     deployer_address=sv_factory::read(),
+        // );
+        return 0;
+    }
 
-////####################################################################
-//// View functions
-////####################################################################
+    // #[internal]
+    // fn _get_reserves(
+    //     token_a_address: ContractAddress,
+    //     token_b_address: ContractAddress,
+    //     curve: ClassHash
+    // ) -> (u256, u256) {
+    //     let mut args = ArrayTrait::new();
+    //     args.append(token_a_address);
+    //     args.append(token_b_address);
+    //     args.append(curve);
+    //     let pair_response = call_contract_syscall(sv_factory_address::read(), 'getPair', args.span()).unwrap_syscall();
+    //     let pair_address = contract_address_try_from_felt252(*pair_response[0]);
+    //     // assert(!pair_address.is_zero(), 'StarkswapV1Router: INVALID_PATH');
+    //     let reserves_response = call_contract_syscall(pair_address, 'getReserves', ArrayTrait::new().span()).unwrap_syscall();
+    //     let reserve_0 = *reserves_response[0];
+    //     let reserve_1 = *reserves_response[1];
+    //     let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
+    //     if ContractAddress::eq(base_address, token_a_address) {
+    //         return (reserve_0, reserve_1);
+    //     }
+    //     return (reserve_1, reserve_0);
+    // }
 
-//#[view]
-//fn factory{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (address: felt) {
-//return sv_factory.read();
-//}
-
-//#[view]
-//fn pairClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-//pair_class_hash: felt
-//) {
-//return sv_pair_class_hash.read();
-//}
-
-////####################################################################
-//// External functions
-////####################################################################
-
-//fn _pair_for{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//token_a_address: felt, token_b_address: felt, curve: felt
-//) -> (pair_address: felt) {
-//alloc_locals;
-
-//let (factory_address: felt) = sv_factory.read();
-//let (pair_class_hash: felt) = sv_pair_class_hash.read();
-
-//let (base_address: felt, quote_address: felt) = _sort_tokens(token_a_address, token_b_address);
-//let (pair_address: felt) = get_contract_address{hash_ptr=pedersen_ptr}(
-//salt=0,
-//class_hash=pair_class_hash,
-//constructor_calldata_size=3,
-//constructor_calldata=cast(new (base_address, quote_address, curve), felt*),
-//deployer_address=factory_address,
-//);
-
-//return (pair_address=pair_address);
-//}
-
-//fn _get_reserves{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//token_a_address: felt, token_b_address: felt, curve: felt
-//) -> (reserve_a: u256, reserve_b: u256) {
-//alloc_locals;
-
-//let (factory_address: felt) = sv_factory.read();
-//let (local pair_address: felt) = IStarkswapV1Factory.getPair(
-//factory_address, token_a_address, token_b_address, curve
-//);
-//with_attr error_message("StarkswapV1Router: INVALID_PATH") {
-//assert_not_zero(pair_address);
-//}
-//let (
-//reserve_0: u256, reserve_1: u256, block_timestamp_last: felt
-//) = IStarkswapV1Pair.getReserves(contract_address=pair_address);
-//let (base_address: felt, quote_address: felt) = _sort_tokens(token_a_address, token_b_address);
-
-//if (base_address == token_a_address) {
-//return (reserve_0, reserve_1);
-//}
-
-//return (reserve_1, reserve_0);
-//}
+}
 
 //fn _assert_valid_deadline{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 //deadline: felt

@@ -49,8 +49,18 @@ trait IStarkswapV1Router {
     // ) -> (amount_b: u256):
     // end
 
-    fn getAmountOut(amount_in: u256, reserve_in: u256, reserve_out: u256, curve: felt252) -> u256;
-    fn getAmountIn(amount_out: u256, reserve_in: u256, reserve_out: u256, curve: felt252) -> u256;
+    fn getAmountOut(amount_in: u256,
+                    reserve_in: u256,
+                    reserve_out: u256,
+                    decimals_in: felt252,
+                    decimals_out: felt252,
+                    curve: felt252) -> u256;
+    fn getAmountIn(amount_out: u256,
+                   reserve_in: u256,
+                   reserve_out: u256,
+                   decimals_in: felt252,
+                   decimals_out: felt252,
+                   curve: felt252) -> u256;
     fn getAmountsOut(
         amount_in: u256, routes_len: felt252, routes: Array<Route>
     ) -> (felt252, Array<u256>);
