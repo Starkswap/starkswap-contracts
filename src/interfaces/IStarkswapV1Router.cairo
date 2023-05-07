@@ -1,4 +1,6 @@
 use starkswap_contracts::structs::route::Route;
+use starknet::ContractAddress;
+use starknet::ClassHash;
 
 #[abi]
 trait IStarkswapV1Router {
@@ -44,26 +46,37 @@ trait IStarkswapV1Router {
         amount_a: u256,
         reserve_a: u256,
         reserve_b: u256,
+    ) -> u256;
+    fn oracleQuote(
+        pair_address: ContractAddress,
+        token_in: ContractAddress,
+        amount_in: u256,
+        sample_count: felt252
+    ) -> u256;
+    fn getAmountOut(
+        amount_in: u256,
+        reserve_in: u256,
+        reserve_out: u256,
+        decimals_in: felt252,
+        decimals_out: felt252,
         curve: felt252
     ) -> u256;
-    fn getAmountOut(amount_in: u256,
-                    reserve_in: u256,
-                    reserve_out: u256,
-                    decimals_in: felt252,
-                    decimals_out: felt252,
-                    curve: felt252
-    ) -> u256;
-    fn getAmountIn(amount_out: u256,
-                   reserve_in: u256,
-                   reserve_out: u256,
-                   decimals_in: felt252,
-                   decimals_out: felt252,
-                   curve: felt252
+    fn getAmountIn(
+        amount_out: u256,
+        reserve_in: u256,
+        reserve_out: u256,
+        decimals_in: felt252,
+        decimals_out: felt252,
+        curve: felt252
     ) -> u256;
     fn getAmountsOut(
-        amount_in: u256, routes_len: felt252, routes: Array<Route>
+        amount_in: u256,
+        routes_len: felt252,
+        routes: Array<Route>
     ) -> (felt252, Array<u256>);
     fn getAmountsIn(
-        amount_out: u256, routes_len: felt252, routes: Array<Route>
+        amount_out: u256,
+        routes_len: felt252,
+        routes: Array<Route>
     ) -> (felt252, Array<u256>);
 }
