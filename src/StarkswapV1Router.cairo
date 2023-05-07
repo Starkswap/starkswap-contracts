@@ -5,12 +5,18 @@ mod StarkswapV1Router {
     use starknet::ClassHash;
     use starknet::library_call_syscall;
     use starknet::contract_address_try_from_felt252;
+    use starknet::contract_address_to_felt252;
+    use starknet::class_hash_to_felt252;
     use starknet::call_contract_syscall;
+    use starknet::get_block_timestamp;
     use zeroable::Zeroable;
     use integer::BoundedInt;
     use integer::u256_from_felt252;
     use integer::u128_to_felt252;
+    use integer::u64_from_felt252;
+    use integer::U256Add;
     use array::ArrayTrait;
+    use array::OptionTrait;
     use starkswap_contracts::interfaces::IStarkswapV1Curve::IStarkswapV1Curve;
     use starkswap_contracts::interfaces::IStarkswapV1Factory::IStarkswapV1Factory;
     use starkswap_contracts::utils::decimals::make_18_dec;
@@ -39,6 +45,18 @@ mod StarkswapV1Router {
 
     #[view]
     fn pairClassHash() -> ClassHash { return sv_pair_class_hash::read(); }
+
+    #[view]
+    fn quote(
+        amount_a: u256,
+        reserve_a: u256,
+        reserve_b: u256
+    ) -> u256 {
+        assert(amount_a > u256_from_felt252(0), 'INSUFFICIENT_AMOUNT');
+        assert(reserve_a > u256_from_felt252(0), 'INSUFFICIENT_LIQUIDITY');
+        assert(reserve_b > u256_from_felt252(0), 'INSUFFICIENT_LIQUIDITY');
+        return  (amount_a * reserve_b) / reserve_a;
+    }
 
     #[view]
     fn getAmountOut(amount_in: u256,
@@ -107,20 +125,47 @@ mod StarkswapV1Router {
     //
     // }
     //
-    // #[external]
-    // fn addLiquidity(
-    //     token_a_address: felt252,
-    //     token_b_address: felt252,
-    //     curve: felt252,
-    //     amount_a_desired: u256,
-    //     amount_b_desired: u256,
-    //     amount_a_min: u256,
-    //     amount_b_min: u256,
-    //     to: felt252,
-    //     deadline: felt252,
-    // ) -> (u256, u256, u256) {
-    //
-    // }
+    #[external]
+    fn addLiquidity(
+        token_a_address: ContractAddress,
+        token_b_address: ContractAddress,
+        curve: ClassHash,
+        amount_a_desired: u256,
+        amount_b_desired: u256,
+        amount_a_min: u256,
+        amount_b_min: u256,
+        to: ContractAddress,
+        deadline: felt252,
+    ) -> (u256, u256, u256) {
+        _assert_valid_deadline(deadline);
+        let (amount_a, amount_b, pair_address) = _add_liquidity(
+            token_a_address,
+            token_b_address,
+            curve,
+            amount_a_desired,
+            amount_b_desired,
+            amount_a_min,
+            amount_b_min,
+        );
+        let caller_address = get_caller_address();
+        let mut args_a = ArrayTrait::new();
+        args_a.append(contract_address_to_felt252(caller_address));
+        args_a.append(contract_address_to_felt252(pair_address));
+        args_a.append(u128_to_felt252(amount_a.low));
+        args_a.append(u128_to_felt252(amount_a.high));
+        call_contract_syscall(token_a_address, 'transferFrom', args_a.span());
+        let mut args_b = ArrayTrait::new();
+        args_b.append(contract_address_to_felt252(caller_address));
+        args_b.append(contract_address_to_felt252(pair_address));
+        args_b.append(u128_to_felt252(amount_b.low));
+        args_b.append(u128_to_felt252(amount_b.high));
+        call_contract_syscall(token_b_address, 'transferFrom', args_b.span());
+        let mut args_p = ArrayTrait::new();
+        args_p.append(to);
+        let res = call_contract_syscall(pair_address, 'mint', args_b.span()).unwrap_syscall();
+        let liquidity = u256_from_felt252(*res[0]);
+        return (amount_a, amount_b, liquidity);
+    }
     //
     // #[external]
     // fn removeLiquidity(
@@ -177,144 +222,80 @@ mod StarkswapV1Router {
         return 0;
     }
 
-    // #[internal]
-    // fn _get_reserves(
-    //     token_a_address: ContractAddress,
-    //     token_b_address: ContractAddress,
-    //     curve: ClassHash
-    // ) -> (u256, u256) {
-    //     let mut args = ArrayTrait::new();
-    //     args.append(token_a_address);
-    //     args.append(token_b_address);
-    //     args.append(curve);
-    //     let pair_response = call_contract_syscall(sv_factory_address::read(), 'getPair', args.span()).unwrap_syscall();
-    //     let pair_address = contract_address_try_from_felt252(*pair_response[0]);
-    //     // assert(!pair_address.is_zero(), 'StarkswapV1Router: INVALID_PATH');
-    //     let reserves_response = call_contract_syscall(pair_address, 'getReserves', ArrayTrait::new().span()).unwrap_syscall();
-    //     let reserve_0 = *reserves_response[0];
-    //     let reserve_1 = *reserves_response[1];
-    //     let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
-    //     if ContractAddress::eq(base_address, token_a_address) {
-    //         return (reserve_0, reserve_1);
-    //     }
-    //     return (reserve_1, reserve_0);
-    // }
+    #[internal]
+    fn _get_reserves(
+        token_a_address: ContractAddress,
+        token_b_address: ContractAddress,
+        curve: ClassHash
+    ) -> (u256, u256) {
+        let mut args = ArrayTrait::new();
+        args.append(contract_address_to_felt252(token_a_address));
+        args.append(contract_address_to_felt252(token_b_address));
+        args.append(class_hash_to_felt252(curve));
+        let pair_response = call_contract_syscall(sv_factory_address::read(), 'getPair', args.span()).unwrap_syscall();
+        let pair_address = contract_address_try_from_felt252(*pair_response[0]).unwrap();
+        // assert(!pair_address.is_zero(), 'StarkswapV1Router: INVALID_PATH');
+        let reserves_response = call_contract_syscall(pair_address, 'getReserves', ArrayTrait::new().span()).unwrap_syscall();
+        let reserve_0 = u256_from_felt252(*reserves_response[0]);
+        let reserve_1 = u256_from_felt252(*reserves_response[1]);
+        let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
+        if base_address == token_a_address {
+            return (reserve_0, reserve_1);
+        }
+        return (reserve_1, reserve_0);
+    }
 
+    #[internal]
+    fn _assert_valid_deadline(deadline: felt252) {
+        let block_timestamp = get_block_timestamp();
+        assert(block_timestamp < u64_from_felt252(deadline), 'EXPIRED');
+    }
+
+    fn _get_or_create_pair(
+        token_a_address: ContractAddress,
+        token_b_address: ContractAddress,
+        curve: ClassHash
+    ) -> ContractAddress {
+        let mut args = ArrayTrait::new();
+        args.append(contract_address_to_felt252(token_a_address));
+        args.append(contract_address_to_felt252(token_b_address));
+        args.append(class_hash_to_felt252(curve));
+        let get_pair_response = call_contract_syscall(sv_factory_address::read(), 'getPair', args.span()).unwrap_syscall();
+        let pair_address = contract_address_try_from_felt252(*get_pair_response[0]).unwrap();
+        if !pair_address.is_zero() {
+            return pair_address;
+        }
+        let create_pair_response = call_contract_syscall(sv_factory_address::read(), 'createPair', args.span()).unwrap_syscall();
+        let new_pair_address = contract_address_try_from_felt252(*create_pair_response[0]).unwrap();
+        return new_pair_address;
+    }
+
+    #[internal]
+    fn _add_liquidity(
+        token_a_address: ContractAddress,
+        token_b_address: ContractAddress,
+        curve: ClassHash,
+        amount_a_desired: u256,
+        amount_b_desired: u256,
+        amount_a_min: u256,
+        amount_b_min: u256,
+    ) -> (u256, u256, ContractAddress) {
+        let pair_address = _get_or_create_pair(token_a_address, token_b_address, curve);
+        let (reserve_a, reserve_b) = _get_reserves(token_a_address, token_b_address, curve);
+        if reserve_a + reserve_b == u256_from_felt252(0) {
+            return (amount_a_desired, amount_b_desired, pair_address);
+        }
+        let amount_b_optimal = quote(amount_a_desired, reserve_a, reserve_b);
+        if amount_b_optimal < amount_b_desired {
+            assert(amount_b_min <= amount_b_optimal, 'INSUFFICIENT_B_AMOUNT');
+            return (amount_a_desired, amount_b_optimal, pair_address);
+        }
+        let amount_a_optimal = quote(amount_b_desired, reserve_b, reserve_a);
+        assert(amount_a_optimal <= amount_a_desired, 'INSUFFICIENT_A_AMOUNT');
+        assert(amount_a_min <= amount_a_optimal, 'INSUFFICIENT_A_AMOUNT');
+        return (amount_a_optimal, amount_b_desired, pair_address);
+    }
 }
-
-//fn _assert_valid_deadline{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//deadline: felt
-//) -> () {
-//let (block_timestamp) = get_block_timestamp();
-//with_attr error_message("StarkswapV1Router: EXPIRED") {
-//assert_le(block_timestamp, deadline);
-//}
-
-//return ();
-//}
-
-//fn _get_or_create_pair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//token_a_address: felt, token_b_address: felt, curve: felt
-//) -> (address: felt) {
-//let (factory_address: felt) = sv_factory.read();
-//let (existing_pair_address: felt) = IStarkswapV1Factory.getPair(
-//factory_address, token_a_address, token_b_address, curve
-//);
-//if (existing_pair_address == FALSE) {
-//let (new_pair_address: felt) = IStarkswapV1Factory.createPair(
-//factory_address, token_a_address, token_b_address, curve
-//);
-//assert_not_zero(new_pair_address);
-//return (address=new_pair_address);
-//}
-
-//return (address=existing_pair_address);
-//}
-
-//fn _add_liquidity{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//token_a_address: felt,
-//token_b_address: felt,
-//curve: felt,
-//amount_a_desired: u256,
-//amount_b_desired: u256,
-//amount_a_min: u256,
-//amount_b_min: u256,
-//) -> (amount_a: u256, amount_b: u256, pair_address: felt) {
-//alloc_locals;
-
-//let (local pair_address: felt) = _get_or_create_pair(token_a_address, token_b_address, curve);
-//let (reserve_a: u256, reserve_b: u256) = _get_reserves(
-//token_a_address, token_b_address, curve
-//);
-
-//let (sum: u256) = SafeUint256.add(reserve_a, reserve_b);
-//let (is_sum_zero: felt) = uint256_eq(sum, u256(0, 0));
-//if (is_sum_zero == TRUE) {
-//return (amount_a_desired, amount_b_desired, pair_address);
-//}
-
-//let (amount_b_optimal: u256) = quote(amount_a_desired, reserve_a, reserve_b);
-//let (is_b_optimal_le_b_desired) = uint256_le(amount_b_optimal, amount_b_desired);
-//if (is_b_optimal_le_b_desired == TRUE) {
-//with_attr error_message("StarkswapV1Router: INSUFFICIENT_B_AMOUNT") {
-//let (b_min_le_b_optimal) = uint256_le(amount_b_min, amount_b_optimal);
-//assert b_min_le_b_optimal = TRUE;
-//}
-//return (amount_a_desired, amount_b_optimal, pair_address);
-//}
-
-//let (amount_a_optimal: u256) = quote(amount_b_desired, reserve_b, reserve_a);
-//let (is_a_optimal_le_a_desired) = uint256_le(amount_a_optimal, amount_a_desired);
-//assert is_a_optimal_le_a_desired = TRUE;
-//with_attr error_message("StarkswapV1Router: INSUFFICIENT_A_AMOUNT") {
-//let (is_a_min_le_a_optimal) = uint256_le(amount_a_min, amount_a_optimal);
-//assert is_a_min_le_a_optimal = TRUE;
-//return (amount_a_optimal, amount_b_desired, pair_address);
-//}
-//}
-
-//#[external]
-//fn addLiquidity{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//token_a_address: felt,
-//token_b_address: felt,
-//curve: felt,
-//amount_a_desired: u256,
-//amount_b_desired: u256,
-//amount_a_min: u256,
-//amount_b_min: u256,
-//to: felt,
-//deadline: felt,
-//) -> (amount_a: u256, amount_b: u256, liquidity: u256) {
-//_assert_valid_deadline(deadline);
-
-//let (amount_a: u256, amount_b: u256, pair_address: felt) = _add_liquidity(
-//token_a_address,
-//token_b_address,
-//curve,
-//amount_a_desired,
-//amount_b_desired,
-//amount_a_min,
-//amount_b_min,
-//);
-
-//let (caller_address: felt) = get_caller_address();
-
-//IERC20.transferFrom(
-//contract_address=token_a_address,
-//sender=caller_address,
-//recipient=pair_address,
-//amount=amount_a,
-//);
-//IERC20.transferFrom(
-//contract_address=token_b_address,
-//sender=caller_address,
-//recipient=pair_address,
-//amount=amount_b,
-//);
-//let (liquidity: u256) = IStarkswapV1Pair.mint(contract_address=pair_address, to=to);
-
-//return (amount_a, amount_b, liquidity);
-//}
 
 //#[external]
 //fn removeLiquidity{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -473,27 +454,6 @@ mod StarkswapV1Router {
 //_swap(amounts + u256.SIZE, routes_len, routes, to);
 
 //return (amounts_len, amounts);
-//}
-
-//#[view]
-//fn quote{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//amount_a: u256, reserve_a: u256, reserve_b: u256
-//) -> (amount_b: u256) {
-//alloc_locals;
-
-//with_attr error_message("StarkswapV1Router: INSUFFICIENT_AMOUNT") {
-//assert_uint256_gt(amount_a, u256(0, 0));
-//}
-
-//with_attr error_message("StarkswapV1Router: INSUFFICIENT_LIQUIDITY") {
-//assert_uint256_gt(reserve_a, u256(0, 0));
-//assert_uint256_gt(reserve_b, u256(0, 0));
-//}
-
-//let (r0) = SafeUint256.mul(amount_a, reserve_b);
-//let (amount_b, _) = SafeUint256.div_rem(r0, reserve_a);
-
-//return (amount_b,);
 //}
 
 //fn _in_out_token{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
