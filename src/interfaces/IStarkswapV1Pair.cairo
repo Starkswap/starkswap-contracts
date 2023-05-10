@@ -1,4 +1,6 @@
 use starkswap_contracts::structs::observation::Observation;
+use starknet::ClassHash;
+use starknet::ContractAddress;
 
 #[abi]
 trait IStarkswapV1Pair {
@@ -16,20 +18,20 @@ trait IStarkswapV1Pair {
     // ######### END ERC20 functions ##########
 
     fn MINIMUM_LIQUIDITY() -> u256;
-    fn factory() -> felt252;
-    fn baseToken() -> felt252;
-    fn quoteToken() -> felt252;
-    fn curve() -> (felt252, felt252);
+    fn factory() -> ContractAddress;
+    fn baseToken() -> ContractAddress;
+    fn quoteToken() -> ContractAddress;
+    fn curve() -> (ClassHash, felt252);
     fn getReserves() -> (u256, u256, felt252);
-    fn getObservations(num_observations: felt252) -> (felt252, Array<Observation>);
+    fn getObservations(num_observations: felt252) -> Array<Observation>;
     fn lastObservations() -> Observation;
     fn kLast() -> u256;
-    fn mint(to: felt252) -> u256;
-    fn burn(to: felt252) -> (u256, u256);
+    fn mint(to: ContractAddress) -> u256;
+    fn burn(to: ContractAddress) -> (u256, u256);
     fn swap(
         base_out: u256,
         quote_out: u256,
-        to: felt252,
+        to: ContractAddress,
         calldata_len: felt252,
         calldata: Array<felt252>
     );

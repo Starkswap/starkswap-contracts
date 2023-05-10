@@ -671,7 +671,7 @@ mod StarkswapV1Pair {
 //     return ();
 // }
 
- fn normalise_decimals(reserve_a: u256, reserve_b: u256, decimals_a: felt252, decimals_b: felt252) -> (u256, u256) {
+ fn normalise_decimals(reserve_a: u256, reserve_b: u256, decimals_a: u8, decimals_b: u8) -> (u256, u256) {
      let reserve_a_normalised = make_18_dec(reserve_a, decimals_a);
      let reserve_b_normalised = make_18_dec(reserve_b, decimals_b);
 

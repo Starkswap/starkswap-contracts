@@ -29,19 +29,17 @@ trait IStarkswapV1Router {
     fn swapExactTokensForTokens(
         amount_in: u256,
         amount_out_min: u256,
-        routes_len: felt252,
         routes: Array<Route>,
         to: felt252,
         deadline: felt252,
-    ) -> (felt252, Array<u256>);
+    ) -> Array<u256>;
     fn swapTokensForExactTokens(
         amount_out: u256,
         amount_in_max: u256,
-        routes_len: felt252,
         routes: Array<Route>,
         to: felt252,
         deadline: felt252,
-    ) -> (felt252, Array<u256>);
+    ) -> Array<u256>;
     fn quote(
         amount_a: u256,
         reserve_a: u256,
@@ -71,12 +69,10 @@ trait IStarkswapV1Router {
     ) -> u256;
     fn getAmountsOut(
         amount_in: u256,
-        routes_len: felt252,
         routes: Array<Route>
-    ) -> (felt252, Array<u256>);
+    ) -> Array<u256>;
     fn getAmountsIn(
         amount_out: u256,
-        routes_len: felt252,
         routes: Array<Route>
-    ) -> (felt252, Array<u256>);
+    ) -> Array<u256>;
 }

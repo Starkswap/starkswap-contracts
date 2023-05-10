@@ -2,7 +2,7 @@ use integer::u256_from_felt252;
 
 const DECIMAL_18_NORMALISER: felt252 = 1000000000000000000;
 
-fn make_18_dec(value: u256, decimals: felt252) -> u256 implicits(RangeCheck) {
+fn make_18_dec(value: u256, decimals: u8) -> u256 implicits(RangeCheck) {
     if (decimals == 18) {
         return value;
     } else {
@@ -15,7 +15,7 @@ fn make_18_dec(value: u256, decimals: felt252) -> u256 implicits(RangeCheck) {
     }
 }
 
-fn unmake_18_dec(value: u256, decimals: felt252) -> u256 implicits(RangeCheck) {
+fn unmake_18_dec(value: u256, decimals: u8) -> u256 implicits(RangeCheck) {
     if (decimals == 18) {
         return value;
     } else {
