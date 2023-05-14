@@ -43,10 +43,7 @@ mod StarkswapV1Router {
     }
 
     #[constructor]
-    fn constructor(
-        factory_address: ContractAddress,
-        pair_class_hash: ClassHash,
-    ) {
+    fn constructor(factory_address: ContractAddress, pair_class_hash: ClassHash, ) {
         sv_factory_address::write(factory_address);
         sv_pair_class_hash::write(pair_class_hash);
     }
@@ -57,14 +54,12 @@ mod StarkswapV1Router {
     }
 
     #[view]
-    fn pairClassHash() -> ClassHash { return sv_pair_class_hash::read(); }
+    fn pairClassHash() -> ClassHash {
+        return sv_pair_class_hash::read();
+    }
 
     #[view]
-    fn quote(
-        amount_a: u256,
-        reserve_a: u256,
-        reserve_b: u256,
-    ) -> u256 {
+    fn quote(amount_a: u256, reserve_a: u256, reserve_b: u256, ) -> u256 {
         assert(amount_a > u256_from_felt252(0), 'INSUFFICIENT_AMOUNT');
         assert(reserve_a > u256_from_felt252(0), 'INSUFFICIENT_LIQUIDITY');
         assert(reserve_b > u256_from_felt252(0), 'INSUFFICIENT_LIQUIDITY');
@@ -81,22 +76,37 @@ mod StarkswapV1Router {
         // TODO: surely there is a better way to do this assert than casting to u256...
         assert(u256_from_felt252(sample_count) > u256_from_felt252(0), 'SAMPLE_COUNT');
 
-        let (input_token_address, output_token_address, is_input_base) = _in_out_token(pair_address, token_in);
-        let observations = IStarkswapV1PairDispatcher { contract_address: pair_address }.getObservations(sample_count);
-        let (curve, curve_name) = IStarkswapV1PairDispatcher { contract_address: pair_address }.curve();
+        let (input_token_address, output_token_address, is_input_base) = _in_out_token(
+            pair_address, token_in
+        );
+        let observations = IStarkswapV1PairDispatcher {
+            contract_address: pair_address
+        }.getObservations(sample_count);
+        let (curve, curve_name) = IStarkswapV1PairDispatcher {
+            contract_address: pair_address
+        }.curve();
         let decimals_in = IERC20Dispatcher { contract_address: input_token_address }.decimals();
         let decimals_out = IERC20Dispatcher { contract_address: output_token_address }.decimals();
-        let price_average_cumulative = _sample_cumulative_price(observations.len(), observations.span(), is_input_base, amount_in, decimals_in, decimals_out, curve);
+        let price_average_cumulative = _sample_cumulative_price(
+            observations.len(),
+            observations.span(),
+            is_input_base,
+            amount_in,
+            decimals_in,
+            decimals_out,
+            curve
+        );
         return price_average_cumulative / u256_from_felt252(sample_count);
     }
 
     #[view]
-    fn getAmountOut(amount_in: u256,
-                    reserve_in: u256,
-                    reserve_out: u256,
-                    decimals_in: u8,
-                    decimals_out: u8,
-                    curve: ClassHash
+    fn getAmountOut(
+        amount_in: u256,
+        reserve_in: u256,
+        reserve_out: u256,
+        decimals_in: u8,
+        decimals_out: u8,
+        curve: ClassHash
     ) -> u256 {
         assert(amount_in > u256_from_felt252(0), 'INSUFFICIENT_INPUT_AMOUNT');
         assert(reserve_in > u256_from_felt252(0), 'INSUFFICIENT_LIQUIDITY');
@@ -105,17 +115,20 @@ mod StarkswapV1Router {
         let ai = make_18_dec(amount_in, decimals_in);
         let ri = make_18_dec(reserve_in, decimals_in);
         let ro = make_18_dec(reserve_out, decimals_out);
-        let amount_out = IStarkswapV1CurveLibraryDispatcher { class_hash: curve }.get_amount_out(ai, ri, ro);
+        let amount_out = IStarkswapV1CurveLibraryDispatcher {
+            class_hash: curve
+        }.get_amount_out(ai, ri, ro);
         return unmake_18_dec(amount_out, decimals_out);
     }
 
     #[view]
-    fn getAmountIn(amount_out: u256,
-                   reserve_in: u256,
-                   reserve_out: u256,
-                   decimals_in: u8,
-                   decimals_out: u8,
-                   curve: ClassHash
+    fn getAmountIn(
+        amount_out: u256,
+        reserve_in: u256,
+        reserve_out: u256,
+        decimals_in: u8,
+        decimals_out: u8,
+        curve: ClassHash
     ) -> u256 {
         assert(amount_out > u256_from_felt252(0), 'INSUFFICIENT_OUTPUT_AMOUNT');
         assert(reserve_in > u256_from_felt252(0), 'INSUFFICIENT_LIQUIDITY');
@@ -124,23 +137,19 @@ mod StarkswapV1Router {
         let ao = make_18_dec(amount_out, decimals_out);
         let ri = make_18_dec(reserve_in, decimals_in);
         let ro = make_18_dec(reserve_out, decimals_out);
-        let amount_in = IStarkswapV1CurveLibraryDispatcher { class_hash: curve }.get_amount_in(ao, ri, ro);
+        let amount_in = IStarkswapV1CurveLibraryDispatcher {
+            class_hash: curve
+        }.get_amount_in(ao, ri, ro);
         return amount_in;
     }
 
     #[view]
-    fn getAmountsOut(
-        amount_in: u256,
-        routes: Array<Route>
-    ) -> Array<u256> {
+    fn getAmountsOut(amount_in: u256, routes: Array<Route>) -> Array<u256> {
         return _get_amounts_out(amount_in, routes.span());
     }
 
     #[view]
-    fn getAmountsIn(
-        amount_out: u256,
-        routes: Array<Route>
-    ) -> Array<u256> {
+    fn getAmountsIn(amount_out: u256, routes: Array<Route>) -> Array<u256> {
         return _get_amounts_in(amount_out, routes.span());
     }
 
@@ -168,8 +177,12 @@ mod StarkswapV1Router {
             amount_b_min,
         );
         let caller_address = get_caller_address();
-        IERC20Dispatcher { contract_address: token_a_address }.transfer_from(caller_address, pair_address, amount_a);
-        IERC20Dispatcher { contract_address: token_b_address }.transfer_from(caller_address, pair_address, amount_b);
+        IERC20Dispatcher {
+            contract_address: token_a_address
+        }.transfer_from(caller_address, pair_address, amount_a);
+        IERC20Dispatcher {
+            contract_address: token_b_address
+        }.transfer_from(caller_address, pair_address, amount_b);
         let liquidity = IStarkswapV1PairDispatcher { contract_address: token_b_address }.mint(to);
         return (amount_a, amount_b, liquidity);
     }
@@ -191,8 +204,12 @@ mod StarkswapV1Router {
         assert(!pair_address.is_zero(), 'NONEXISTENT_PAIR');
 
         let caller_address = get_caller_address();
-        IERC20Dispatcher { contract_address: pair_address }.transfer_from(caller_address, pair_address, liquidity);
-        let (amount_0, amount_1) = IStarkswapV1PairDispatcher { contract_address: token_b_address }.burn(to);
+        IERC20Dispatcher {
+            contract_address: pair_address
+        }.transfer_from(caller_address, pair_address, liquidity);
+        let (amount_0, amount_1) = IStarkswapV1PairDispatcher {
+            contract_address: token_b_address
+        }.burn(to);
         let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
         let (amount_a, amount_b) = _sort_amounts(token_a_address, base_address, amount_0, amount_1);
 
@@ -239,10 +256,7 @@ mod StarkswapV1Router {
     }
 
     #[internal]
-    fn _get_amounts_out(
-        amount_in: u256,
-        routes: Span<Route>
-    ) -> Array<u256> {
+    fn _get_amounts_out(amount_in: u256, routes: Span<Route>) -> Array<u256> {
         assert(routes.len() >= 1, 'INVALID_PATH');
         let mut amounts = ArrayTrait::new();
         amounts.append(amount_in);
@@ -256,7 +270,9 @@ mod StarkswapV1Router {
             let (reserve_in, reserve_out) = _get_reserves(route.input, route.output, route.curve);
             let decimals_in = IERC20Dispatcher { contract_address: route.input }.decimals();
             let decimals_out = IERC20Dispatcher { contract_address: route.output }.decimals();
-            let amount_out = getAmountOut(*amounts[index], reserve_in, reserve_out, decimals_in, decimals_out, route.curve);
+            let amount_out = getAmountOut(
+                *amounts[index], reserve_in, reserve_out, decimals_in, decimals_out, route.curve
+            );
             amounts.append(amount_out);
             index = index + 1;
         };
@@ -264,10 +280,7 @@ mod StarkswapV1Router {
     }
 
     #[internal]
-    fn _get_amounts_in(
-        amount_out: u256,
-        routes: Span<Route>
-    ) -> Array<u256> {
+    fn _get_amounts_in(amount_out: u256, routes: Span<Route>) -> Array<u256> {
         assert(routes.len() >= 1, 'INVALID_PATH');
 
         let mut amounts = ArrayTrait::new();
@@ -282,7 +295,9 @@ mod StarkswapV1Router {
             let (reserve_in, reserve_out) = _get_reserves(route.input, route.output, route.curve);
             let decimals_in = IERC20Dispatcher { contract_address: route.input }.decimals();
             let decimals_out = IERC20Dispatcher { contract_address: route.output }.decimals();
-            let amount_in = getAmountIn(*amounts[index], reserve_in, reserve_out, decimals_in, decimals_out, route.curve);
+            let amount_in = getAmountIn(
+                *amounts[index], reserve_in, reserve_out, decimals_in, decimals_out, route.curve
+            );
             amounts.append(amount_in);
             index = index + 1;
         };
@@ -301,9 +316,7 @@ mod StarkswapV1Router {
 
     #[internal]
     fn _pair_for(
-        token_a_address: ContractAddress,
-        token_b_address: ContractAddress,
-        curve: ClassHash
+        token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
     ) -> ContractAddress {
         //TODO: Can this be replicated in cairo 1 or do we need to simply make a factory call?
         // let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
@@ -319,14 +332,16 @@ mod StarkswapV1Router {
 
     #[internal]
     fn _get_reserves(
-        token_a_address: ContractAddress,
-        token_b_address: ContractAddress,
-        curve: ClassHash
+        token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
     ) -> (u256, u256) {
-        let pair_address = IStarkswapV1FactoryDispatcher { contract_address: sv_factory_address::read() }.getPair(token_a_address, token_b_address, curve);
+        let pair_address = IStarkswapV1FactoryDispatcher {
+            contract_address: sv_factory_address::read()
+        }.getPair(token_a_address, token_b_address, curve);
         assert(!pair_address.is_zero(), 'INVALID_PATH');
 
-        let (reserve_0, reserve_1, timestamp) = IStarkswapV1PairDispatcher { contract_address: pair_address }.getReserves();
+        let (reserve_0, reserve_1, timestamp) = IStarkswapV1PairDispatcher {
+            contract_address: pair_address
+        }.getReserves();
         let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
         if base_address == token_a_address {
             return (reserve_0, reserve_1);
@@ -341,15 +356,17 @@ mod StarkswapV1Router {
     }
 
     fn _get_or_create_pair(
-        token_a_address: ContractAddress,
-        token_b_address: ContractAddress,
-        curve: ClassHash
+        token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
     ) -> ContractAddress {
-        let pair_address = IStarkswapV1FactoryDispatcher { contract_address: sv_factory_address::read() }.getPair(token_a_address, token_b_address, curve);
+        let pair_address = IStarkswapV1FactoryDispatcher {
+            contract_address: sv_factory_address::read()
+        }.getPair(token_a_address, token_b_address, curve);
         if !pair_address.is_zero() {
             return pair_address;
         }
-        return IStarkswapV1FactoryDispatcher { contract_address: sv_factory_address::read() }.createPair(token_a_address, token_b_address, curve);
+        return IStarkswapV1FactoryDispatcher {
+            contract_address: sv_factory_address::read()
+        }.createPair(token_a_address, token_b_address, curve);
     }
 
     #[internal]
@@ -365,9 +382,12 @@ mod StarkswapV1Router {
         let pair_address = _get_or_create_pair(token_a_address, token_b_address, curve);
 
         let (reserve_a, reserve_b) = _get_reserves(token_a_address, token_b_address, curve);
-        if reserve_a + reserve_b == u256_from_felt252(0) {
-            return (amount_a_desired, amount_b_desired, pair_address);
-        }
+        if reserve_a
+            + reserve_b == u256_from_felt252(
+                0
+            ) {
+                return (amount_a_desired, amount_b_desired, pair_address);
+            }
 
         let amount_b_optimal = quote(amount_a_desired, reserve_a, reserve_b);
         if amount_b_optimal < amount_b_desired {
@@ -383,18 +403,16 @@ mod StarkswapV1Router {
     }
 
     #[internal]
-    fn _swap(
-        amounts: Span<u256>,
-        routes: Span<Route>,
-        to: ContractAddress
-    ) {
+    fn _swap(amounts: Span<u256>, routes: Span<Route>, to: ContractAddress) {
         let route = *routes[0];
         let pair_address = _pair_for(route.input, route.output, route.curve);
         let caller_address = get_caller_address();
 
-        IERC20Dispatcher { contract_address: route.input }.transfer_from(caller_address, pair_address, *amounts[0]);
+        IERC20Dispatcher {
+            contract_address: route.input
+        }.transfer_from(caller_address, pair_address, *amounts[0]);
 
-        let mut index= 0;
+        let mut index = 0;
         loop {
             if index == routes.len() {
                 // TODO is this the correct break return val?
@@ -405,7 +423,9 @@ mod StarkswapV1Router {
             let amount = *amounts[index];
 
             let (base_token, _) = _sort_tokens(route.input, route.output);
-            let (base_out, quote_out) = _sort_amounts(route.input, base_token, u256_from_felt252(0), amount);
+            let (base_out, quote_out) = _sort_amounts(
+                route.input, base_token, u256_from_felt252(0), amount
+            );
 
             let mut to_address = to;
             let pair_address = _pair_for(route.input, route.output, route.curve);
@@ -414,7 +434,9 @@ mod StarkswapV1Router {
                 to_address = pair_address;
             }
 
-            IStarkswapV1PairDispatcher { contract_address: pair_address }.swap(base_out, quote_out, to_address, 0, ArrayTrait::new());
+            IStarkswapV1PairDispatcher {
+                contract_address: pair_address
+            }.swap(base_out, quote_out, to_address, 0, ArrayTrait::new());
 
             index = index + 1;
         };
@@ -422,11 +444,14 @@ mod StarkswapV1Router {
 
     #[internal]
     fn _in_out_token(
-        pair_address: ContractAddress,
-        token_in: ContractAddress
+        pair_address: ContractAddress, token_in: ContractAddress
     ) -> (ContractAddress, ContractAddress, bool) {
-        let base_token_address = IStarkswapV1PairDispatcher { contract_address: pair_address }.baseToken();
-        let quote_token_address = IStarkswapV1PairDispatcher { contract_address: pair_address }.quoteToken();
+        let base_token_address = IStarkswapV1PairDispatcher {
+            contract_address: pair_address
+        }.baseToken();
+        let quote_token_address = IStarkswapV1PairDispatcher {
+            contract_address: pair_address
+        }.quoteToken();
 
         if token_in == base_token_address {
             return (base_token_address, quote_token_address, true);
@@ -436,16 +461,20 @@ mod StarkswapV1Router {
             return (quote_token_address, base_token_address, false);
         }
 
-        return (contract_address_try_from_felt252(0).unwrap(), contract_address_try_from_felt252(0).unwrap(), false);
+        return (
+            contract_address_try_from_felt252(0).unwrap(),
+            contract_address_try_from_felt252(0).unwrap(),
+            false
+        );
     }
 
     fn _in_out_reserves(
-        next_observation: Observation,
-        current_observation: Observation,
-        is_input_base: bool
+        next_observation: Observation, current_observation: Observation, is_input_base: bool
     ) -> (u256, u256) {
-        let base_reserve = next_observation.cumulative_base_reserve - current_observation.cumulative_base_reserve;
-        let quote_reserve = next_observation.cumulative_quote_reserve - current_observation.cumulative_quote_reserve;
+        let base_reserve = next_observation.cumulative_base_reserve
+            - current_observation.cumulative_base_reserve;
+        let quote_reserve = next_observation.cumulative_quote_reserve
+            - current_observation.cumulative_quote_reserve;
 
         if is_input_base == true {
             return (base_reserve, quote_reserve);
@@ -469,9 +498,13 @@ mod StarkswapV1Router {
 
         let current_observation = *observations[observations.len() - observations_len];
         let next_observation = *observations[observations.len() - observations_len + 1];
-        let (reserve_in, reserve_out) = _in_out_reserves(next_observation, current_observation, is_input_base);
+        let (reserve_in, reserve_out) = _in_out_reserves(
+            next_observation, current_observation, is_input_base
+        );
 
-        let amount_out = getAmountOut(amount_in, reserve_in, reserve_out, decimals_in, decimals_out, curve);
+        let amount_out = getAmountOut(
+            amount_in, reserve_in, reserve_out, decimals_in, decimals_out, curve
+        );
         let accumulator = _sample_cumulative_price(
             observations_len - 1,
             observations,
@@ -485,6 +518,4 @@ mod StarkswapV1Router {
         return amount_out + accumulator;
     }
 }
-
-
 
