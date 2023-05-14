@@ -27,24 +27,12 @@ trait IStarkswapV1Router {
         deadline: felt252,
     ) -> (u256, u256);
     fn swapExactTokensForTokens(
-        amount_in: u256,
-        amount_out_min: u256,
-        routes: Array<Route>,
-        to: felt252,
-        deadline: felt252,
+        amount_in: u256, amount_out_min: u256, routes: Array<Route>, to: felt252, deadline: felt252, 
     ) -> Array<u256>;
     fn swapTokensForExactTokens(
-        amount_out: u256,
-        amount_in_max: u256,
-        routes: Array<Route>,
-        to: felt252,
-        deadline: felt252,
+        amount_out: u256, amount_in_max: u256, routes: Array<Route>, to: felt252, deadline: felt252, 
     ) -> Array<u256>;
-    fn quote(
-        amount_a: u256,
-        reserve_a: u256,
-        reserve_b: u256,
-    ) -> u256;
+    fn quote(amount_a: u256, reserve_a: u256, reserve_b: u256, ) -> u256;
     fn oracleQuote(
         pair_address: ContractAddress,
         token_in: ContractAddress,
@@ -67,12 +55,6 @@ trait IStarkswapV1Router {
         decimals_out: felt252,
         curve: felt252
     ) -> u256;
-    fn getAmountsOut(
-        amount_in: u256,
-        routes: Array<Route>
-    ) -> Array<u256>;
-    fn getAmountsIn(
-        amount_out: u256,
-        routes: Array<Route>
-    ) -> Array<u256>;
+    fn getAmountsOut(amount_in: u256, routes: Array<Route>) -> Array<u256>;
+    fn getAmountsIn(amount_out: u256, routes: Array<Route>) -> Array<u256>;
 }
