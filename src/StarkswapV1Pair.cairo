@@ -15,6 +15,8 @@ mod StarkswapV1Pair {
     use integer::u256_from_felt252;
     use integer::u64_from_felt252;
     use integer::u256_sqrt;
+    use array::ArrayTrait;
+    use traits::Into;
 
     const LOCKING_ADDRESS: felt252 = 42; // ERC20 mint does not allow `0`, so we use `42` instead
     const PERIOD_SIZE: felt252 = 1800; // Capture oracle reading every 30 minutes
@@ -27,8 +29,8 @@ mod StarkswapV1Pair {
         sv_quote_token_reserve: u256,
         sv_base_token_reserve_cumulative_last: u256,
         sv_quote_token_reserve_cumulative_last: u256,
-        //sv_observations: LegacyMap::<felt252, Observation>,
-        sv_observations_len: felt252,
+        sv_observations: LegacyMap::<usize, Observation>,
+        sv_observations_len: usize,
         sv_k_last: u256,
         sv_factory_address: ContractAddress,
         sv_block_timestamp_last: u64,
@@ -70,9 +72,17 @@ mod StarkswapV1Pair {
         sv_curve::write(curve_class_hash);
 
         let block_timestamp = get_block_timestamp();
-    //sv_observations::write(0, Observation(block_timestamp, u256(0, 0), u256(0, 0)));
-    //sv_observations_len::write(1);
-
+        sv_observations::write(
+            0,
+            Observation {
+                block_timestamp: block_timestamp, cumulative_base_reserve: u256 {
+                    low: 0, high: 0
+                    }, cumulative_quote_reserve: u256 {
+                    low: 0, high: 0
+                }
+            }
+        );
+        sv_observations_len::write(1);
     // TODO: name should be "StarkSwap V1 <Curve>" and Symbol should be "<base>/<quote>"
     //ERC20.initializer('StarkswapV1', 'StarkswapV1', 18);
     }
@@ -169,49 +179,31 @@ mod StarkswapV1Pair {
 
         return (base_token_reserve, quote_token_reserve, timestamp);
     }
-    // fn _collect_observations(
-    //     i: felt252, end_idx: felt252, observations: Observation*
-    // ) -> (count: felt252) {
-    //     let (observation) = sv_observations::read(i);
-    //     assert [observations] = observation;
 
-    //     if ((i) == end_idx) {
-    //         return (0,);
-    //     }
 
-    //     let (r) = _collect_observations(i, end_idx, observations);
-    //     return (r + 1,);
-    // }
+    #[view]
+    fn getObservations(num_observations: felt252) -> Array<Observation> {
+        let mut amounts: Array<Observation> = ArrayTrait::new();
+        let count = sv_observations_len::read();
+        let mut i: usize = 0;
 
-    // #[view]
-    // fn getObservations(
-    //     num_observations: felt252
-    // ) -> (observations_len: felt252, observations: Observation*) {
-    //     alloc_locals;
-    //     let (local observations: Observation*) = alloc();
-    //     let (count) = sv_observations_len::read();
+        loop {
+            if i >= count {
+                break ();
+            }
+            amounts.append(sv_observations::read(i));
+            i = i + 1;
+        };
 
-    //     if (num_observations == 0) {
-    //         _collect_observations(0, count - 1, observations);
-    //         return (count, observations);
-    //     } else {
-    //         assert_lt(count, num_observations);
-    //         _collect_observations(count - num_observations, count - 1, observations);
-    //         return (num_observations, observations);
-    //     }
-    // }
+        return amounts;
+    }
 
     #[view]
     fn lastObservation() -> Observation {
-        //let count = sv_observations_len::read();
-        //let observation = sv_observations::read(count - 1);
+        let count = sv_observations_len::read();
+        let observation = sv_observations::read(count - 1);
 
-        //return observation;
-        return Observation {
-            block_timestamp: 0,
-            cumulative_base_reserve: u256_from_felt252(0),
-            cumulative_quote_reserve: u256_from_felt252(0)
-        };
+        return observation;
     }
 
     #[view]
@@ -229,9 +221,7 @@ mod StarkswapV1Pair {
             // # Fee is on
 
             let k_last: u256 = kLast();
-            if (k_last != u256_from_felt252(
-                0
-            )) {
+            if (k_last != u256_from_felt252(0)) {
                 //TODO: replace with curve get_k?
                 let k = base_token_reserve * quote_token_reserve;
 
@@ -263,24 +253,16 @@ mod StarkswapV1Pair {
     }
 
     fn _update_cumulative_last_reserves(
-        time_elapsed: felt252,
+        time_elapsed: u64,
         base_token_reserve: u256,
         quote_token_reserve: u256,
         base_reserve_cumulative_last: u256,
         quote_reserve_cumulative_last: u256
     ) {
         // if (time_elapsed > 0 && base_reserve != 0 && quote_reserve != 0)
-        if (u256_from_felt252(
-            time_elapsed
-        ) > u256_from_felt252(
-            0
-        )) {
-            if (base_token_reserve != u256_from_felt252(
-                0
-            )) {
-                if (quote_token_reserve != u256_from_felt252(
-                    0
-                )) {
+        if (time_elapsed > 0_u64) {
+            if (base_token_reserve != u256_from_felt252(0)) {
+                if (quote_token_reserve != u256_from_felt252(0)) {
                     sv_base_token_reserve_cumulative_last::write(base_reserve_cumulative_last);
                     sv_quote_token_reserve_cumulative_last::write(quote_reserve_cumulative_last);
                 }
@@ -296,15 +278,14 @@ mod StarkswapV1Pair {
         quote_token_reserve: u256
     ) -> () {
         let block_timestamp = get_block_timestamp();
-        //let block_timestamp_last = sv_block_timestamp_last::read();
-        //let time_elapsed = block_timestamp - block_timestamp_last;
-        let time_elapsed: felt252 = 0;
+        let block_timestamp_last = sv_block_timestamp_last::read();
+        let time_elapsed = block_timestamp - block_timestamp_last;
 
         let base_reserve_cumulative_last_old = sv_base_token_reserve_cumulative_last::read();
         let quote_reserve_cumulative_last_old = sv_quote_token_reserve_cumulative_last::read();
 
-        let base_reserve_cumulative_last = base_token_reserve * u256_from_felt252(time_elapsed);
-        let quote_reserve_cumulative_last = quote_token_reserve * u256_from_felt252(time_elapsed);
+        let base_reserve_cumulative_last = base_token_reserve * u256{low: time_elapsed.into(), high: 0};
+        let quote_reserve_cumulative_last = quote_token_reserve * u256{low: time_elapsed.into(), high: 0};
 
         let base_reserve_cumulative_last = base_reserve_cumulative_last
             + base_reserve_cumulative_last_old;
@@ -320,22 +301,21 @@ mod StarkswapV1Pair {
         );
 
         let last_observation = lastObservation();
-        //let time_elapsed = block_timestamp - last_observation.block_timestamp;
+        let time_elapsed = block_timestamp - last_observation.block_timestamp;
 
         // if (timeElapsed > periodSize)
         // !(timeElapsed <= periodSize)
-        if (u64_from_felt252(
-            time_elapsed
-        ) > u64_from_felt252(
-            PERIOD_SIZE
-        )) {
-            //TODO: write observations
-            //let (observations_len) = sv_observations_len::read();
-            //sv_observations::write(
-            //observations_len,
-            //Observation(block_timestamp, base_reserve_cumulative_last, quote_reserve_cumulative_last),
-            //);
-            //sv_observations_len::write(observations_len + 1);
+        if (time_elapsed > u64_from_felt252(PERIOD_SIZE)) {
+            let observations_len = sv_observations_len::read();
+            sv_observations::write(
+                observations_len,
+                Observation {
+                    block_timestamp: block_timestamp,
+                    cumulative_base_reserve: base_reserve_cumulative_last,
+                    cumulative_quote_reserve: quote_reserve_cumulative_last
+                }
+            );
+            sv_observations_len::write(observations_len + 1);
 
             sv_base_token_reserve::write(base_token_balance);
             sv_quote_token_reserve::write(quote_token_balance);
@@ -358,9 +338,7 @@ mod StarkswapV1Pair {
     ) -> u256 {
         let min_liquidity = MINIMUM_LIQUIDITY();
 
-        if (total_supply == u256_from_felt252(
-            0
-        )) {
+        if (total_supply == u256_from_felt252(0)) {
             let liquidity: u256 = u256 {
                 low: u256_sqrt(base_token_amount * quote_token_amount), high: 0
             } - min_liquidity;
@@ -497,14 +475,10 @@ mod StarkswapV1Pair {
         quote_amount_out: u256,
         to: ContractAddress,
     ) {
-        if (base_amount_out > u256_from_felt252(
-            0
-        )) {
+        if (base_amount_out > u256_from_felt252(0)) {
             IERC20Dispatcher { contract_address: base_token_address }.transfer(to, base_amount_out);
         }
-        if (quote_amount_out > u256_from_felt252(
-            0
-        )) {
+        if (quote_amount_out > u256_from_felt252(0)) {
             IERC20Dispatcher {
                 contract_address: quote_token_address
             }.transfer(to, quote_amount_out);
@@ -544,12 +518,11 @@ mod StarkswapV1Pair {
     fn _calc_input_amount(reserve: u256, balance: u256, amount_out: u256) -> u256 {
         let r0 = reserve - amount_out;
 
-        if (balance > (reserve
-            - amount_out)) {
-                return balance - r0;
-            } else {
-                return u256_from_felt252(0);
-            }
+        if (balance > (reserve - amount_out)) {
+            return balance - r0;
+        } else {
+            return u256_from_felt252(0);
+        }
     }
 
     fn _calc_balance_adjusted(balance: u256, amount_in: u256) -> u256 {

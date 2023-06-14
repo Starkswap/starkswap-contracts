@@ -382,12 +382,9 @@ mod StarkswapV1Router {
         let pair_address = _get_or_create_pair(token_a_address, token_b_address, curve);
 
         let (reserve_a, reserve_b) = _get_reserves(token_a_address, token_b_address, curve);
-        if reserve_a
-            + reserve_b == u256_from_felt252(
-                0
-            ) {
-                return (amount_a_desired, amount_b_desired, pair_address);
-            }
+        if reserve_a + reserve_b == u256_from_felt252(0) {
+            return (amount_a_desired, amount_b_desired, pair_address);
+        }
 
         let amount_b_optimal = quote(amount_a_desired, reserve_a, reserve_b);
         if amount_b_optimal < amount_b_desired {
