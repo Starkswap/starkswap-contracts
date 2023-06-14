@@ -2,12 +2,15 @@
 mod StarkswapV1Pair {
     use starkswap_contracts::structs::observation::Observation;
     use starkswap_contracts::interfaces::IStarkswapV1Curve::IStarkswapV1Curve;
+    use starkswap_contracts::interfaces::IStarkswapV1Curve::IStarkswapV1CurveDispatcherTrait;
+    use starkswap_contracts::interfaces::IStarkswapV1Curve::IStarkswapV1CurveLibraryDispatcher;
     use starkswap_contracts::interfaces::IStarkswapV1Factory::IStarkswapV1Factory;
     use starkswap_contracts::utils::decimals::make_18_dec;
     use starkswap_contracts::ierc20::IERC20;
     use starkswap_contracts::ierc20::IERC20DispatcherTrait;
     use starkswap_contracts::ierc20::IERC20Dispatcher;
     use starknet::ContractAddress;
+    use starknet::ClassHash;
     use starknet::get_caller_address;
     use starknet::get_contract_address;
     use starknet::get_block_timestamp;
@@ -24,7 +27,7 @@ mod StarkswapV1Pair {
     struct Storage {
         sv_base_token_address: ContractAddress,
         sv_quote_token_address: ContractAddress,
-        sv_curve: felt252,
+        sv_curve: ClassHash,
         sv_base_token_reserve: u256,
         sv_quote_token_reserve: u256,
         sv_base_token_reserve_cumulative_last: u256,
@@ -62,7 +65,7 @@ mod StarkswapV1Pair {
     fn constructor(
         base_token_address: ContractAddress,
         quote_token_address: ContractAddress,
-        curve_class_hash: felt252
+        curve_class_hash: ClassHash
     ) {
         let sender: ContractAddress = get_caller_address();
         sv_factory_address::write(sender);
@@ -163,12 +166,10 @@ mod StarkswapV1Pair {
     }
 
     #[view]
-    fn curve() -> (felt252, felt252) {
+    fn curve() -> (ClassHash, felt252) {
         let class_hash = sv_curve::read();
-        //TODO: figure out how library_call works
-        //let name = IStarkswapV1Curve::library_call_name(class_hash);
-        //return (class_hash, name);
-        return (class_hash, 'foo');
+        let name = IStarkswapV1CurveLibraryDispatcher { class_hash: class_hash }.name();
+        return (class_hash, name);
     }
 
     #[view]
@@ -284,8 +285,12 @@ mod StarkswapV1Pair {
         let base_reserve_cumulative_last_old = sv_base_token_reserve_cumulative_last::read();
         let quote_reserve_cumulative_last_old = sv_quote_token_reserve_cumulative_last::read();
 
-        let base_reserve_cumulative_last = base_token_reserve * u256{low: time_elapsed.into(), high: 0};
-        let quote_reserve_cumulative_last = quote_token_reserve * u256{low: time_elapsed.into(), high: 0};
+        let base_reserve_cumulative_last = base_token_reserve * u256 {
+            low: time_elapsed.into(), high: 0
+        };
+        let quote_reserve_cumulative_last = quote_token_reserve * u256 {
+            low: time_elapsed.into(), high: 0
+        };
 
         let base_reserve_cumulative_last = base_reserve_cumulative_last
             + base_reserve_cumulative_last_old;
@@ -617,10 +622,10 @@ mod StarkswapV1Pair {
         let (a1, b1) = normalise_decimals(
             base_reserve_adjusted, quote_reserve_adjusted, base_token_decimals, quote_token_decimals
         );
-        //let new_k = IStarkswapV1Curve.library_call_get_k(class_hash, a0, b0);
-        //let old_k = IStarkswapV1Curve.library_call_get_k(class_hash, a1, b1);
+        let new_k = IStarkswapV1CurveLibraryDispatcher { class_hash: class_hash }.get_k(a0, b0);
+        let old_k = IStarkswapV1CurveLibraryDispatcher { class_hash: class_hash }.get_k(a1, b1);
 
-        //assert_uint256_ge(new_k, old_k);
+        assert(new_k >= old_k, 'StarkswapV1: K');
         //}
 
         _update(base_token_balance, quote_token_balance, base_amount_out, quote_amount_out);
