@@ -5,15 +5,22 @@ mod StarkswapV1Pair {
     use starkswap_contracts::interfaces::IStarkswapV1Curve::IStarkswapV1CurveDispatcherTrait;
     use starkswap_contracts::interfaces::IStarkswapV1Curve::IStarkswapV1CurveLibraryDispatcher;
     use starkswap_contracts::interfaces::IStarkswapV1Factory::IStarkswapV1Factory;
+    use starkswap_contracts::interfaces::IStarkswapV1Factory::IStarkswapV1FactoryDispatcherTrait;
+    use starkswap_contracts::interfaces::IStarkswapV1Factory::IStarkswapV1FactoryDispatcher;
+    use starkswap_contracts::interfaces::IStarkswapV1Callee::IStarkswapV1Callee;
+    use starkswap_contracts::interfaces::IStarkswapV1Callee::IStarkswapV1CalleeDispatcherTrait;
+    use starkswap_contracts::interfaces::IStarkswapV1Callee::IStarkswapV1CalleeDispatcher;
     use starkswap_contracts::utils::decimals::make_18_dec;
-    use starkswap_contracts::ierc20::IERC20;
-    use starkswap_contracts::ierc20::IERC20DispatcherTrait;
-    use starkswap_contracts::ierc20::IERC20Dispatcher;
+    use openzeppelin::token::erc20::IERC20;
+    use openzeppelin::token::erc20::IERC20DispatcherTrait;
+    use openzeppelin::token::erc20::IERC20Dispatcher;
+    use openzeppelin::token::erc20::ERC20;
     use starknet::ContractAddress;
     use starknet::ClassHash;
     use starknet::get_caller_address;
     use starknet::get_contract_address;
     use starknet::get_block_timestamp;
+    use starknet::contract_address_const;
     use zeroable::Zeroable;
     use integer::u256_from_felt252;
     use integer::u64_from_felt252;
@@ -21,7 +28,7 @@ mod StarkswapV1Pair {
     use array::ArrayTrait;
     use traits::Into;
 
-    const LOCKING_ADDRESS: felt252 = 42; // ERC20 mint does not allow `0`, so we use `42` instead
+    //const LOCKING_ADDRESS: ContractAddress = 42; // ERC20 mint does not allow `0`, so we use `42` instead
     const PERIOD_SIZE: felt252 = 1800; // Capture oracle reading every 30 minutes
 
     struct Storage {
@@ -86,64 +93,58 @@ mod StarkswapV1Pair {
             }
         );
         sv_observations_len::write(1);
-    // TODO: name should be "StarkSwap V1 <Curve>" and Symbol should be "<base>/<quote>"
-    //ERC20.initializer('StarkswapV1', 'StarkswapV1', 18);
+        // TODO: name should be "StarkSwap V1 <Curve>" and Symbol should be "<base>/<quote>"
+        ERC20::constructor('StarkswapV1', 'StarkswapV1', 0, contract_address_const::<0>());
     }
 
-    // #### ERC20 Getters ######
-    //#[view]
-    //fn name() -> felt252 {
-    //return ERC20.name();
-    //}
+    //#### ERC20 Getters ######
+    #[view]
+    fn name() -> felt252 {
+        return ERC20::name();
+    }
 
-    //#[view]
-    //fn symbol() -> felt252 {
-    //return ERC20.symbol();
-    //}
+    #[view]
+    fn symbol() -> felt252 {
+        return ERC20::symbol();
+    }
 
-    //#[view]
-    //fn decimals() -> felt252 {
-    //return ERC20.decimals();
-    //}
+    #[view]
+    fn decimals() -> u8 {
+        return ERC20::decimals();
+    }
 
     #[view]
     fn totalSupply() -> u256 {
-        //TODO: fix
-        //return ERC20.total_supply();
-        return u256_from_felt252(0);
+        return ERC20::total_supply();
     }
 
     #[view]
     fn balanceOf(account: ContractAddress) -> u256 {
-        //return ERC20.balance_of(account);
-        return u256_from_felt252(0);
+        return ERC20::balance_of(account);
     }
 
-    //#[view]
-    //fn allowance(owner: felt252, spender: felt252) -> u256 {
-    //return ERC20.allowance(owner, spender);
-    //}
+    #[view]
+    fn allowance(owner: ContractAddress, spender: ContractAddress) -> u256 {
+        return ERC20::allowance(owner, spender);
+    }
 
     //// #### END ERC20 Getters ######
     //// #### END ERC20 Externals  ######
 
-    //#[external]
-    //fn approve(spender: ContractAddress, amount: u256) -> bool {
-    //ERC20.approve(spender, amount);
-    //return true;
-    //}
+    #[external]
+    fn approve(spender: ContractAddress, amount: u256) -> bool {
+        return ERC20::approve(spender, amount);
+    }
 
-    //#[external]
-    //fn transfer(recipient: ContractAddress, amount: u256) -> bool {
-    //ERC20.transfer(recipient, amount);
-    //return true;
-    //}
+    #[external]
+    fn transfer(recipient: ContractAddress, amount: u256) -> bool {
+        return ERC20::transfer(recipient, amount);
+    }
 
-    //#[external]
-    //fn transferFrom(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool {
-    //ERC20.transfer_from(sender, recipient, amount);
-    //return true;
-    //}
+    #[external]
+    fn transfer_from(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool {
+        return ERC20::transfer_from(sender, recipient, amount);
+    }
 
     #[view]
     fn MINIMUM_LIQUIDITY() -> u256 {
@@ -214,9 +215,9 @@ mod StarkswapV1Pair {
 
     fn _mint_fee(base_token_reserve: u256, quote_token_reserve: u256) -> bool {
         let factory_address = factory();
-        //TODO: fix
-        //let fee_to: ContractAddress = IStarkswapV1Factory::feeTo(factory_address);
-        let fee_to: ContractAddress = Zeroable::zero();
+        let fee_to: ContractAddress = IStarkswapV1FactoryDispatcher {
+            contract_address: factory_address
+        }.feeTo();
 
         if (fee_to != Zeroable::zero()) {
             // # Fee is on
@@ -240,8 +241,8 @@ mod StarkswapV1Pair {
 
                     let liquidity = numerator / denominator;
 
-                    if (liquidity > u256_from_felt252(0)) { //TODO: fix
-                    //ERC20._mint(fee_to, liquidity);
+                    if (liquidity > u256_from_felt252(0)) {
+                        ERC20::_mint(fee_to, liquidity);
                     }
                 }
             }
@@ -348,7 +349,7 @@ mod StarkswapV1Pair {
                 low: u256_sqrt(base_token_amount * quote_token_amount), high: 0
             } - min_liquidity;
 
-            //ERC20._mint(LOCKING_ADDRESS, min_liquidity);
+            ERC20::_mint(contract_address_const::<42>(), min_liquidity);
             return liquidity;
         } else {
             let r1 = (base_token_amount * total_supply) / base_token_reserve;
@@ -400,7 +401,7 @@ mod StarkswapV1Pair {
 
         //assert(liquidity > u256{ low: 0_u128, high: 0_u128 }, 'StarkswapV1: INSUFFICIENT_LIQUIDITY_MINTED');
         assert(liquidity > u256 { low: 0_u128, high: 0_u128 }, 'StarkswapV1: MINTED < MIN');
-        //ERC20._mint(to, liquidity);
+        ERC20::_mint(to, liquidity);
 
         _update(base_token_balance, quote_token_balance, base_token_reserve, quote_token_reserve);
 
@@ -447,7 +448,7 @@ mod StarkswapV1Pair {
             quote_token_amount > u256 { low: 0_u128, high: 0_u128 }, 'StarkswapV1: BURNED < MIN'
         );
 
-        //ERC20._burn(this_pair_address, liquidity);
+        ERC20::_burn(this_pair_address, liquidity);
         IERC20Dispatcher { contract_address: base_token_address }.transfer(to, base_token_amount);
         IERC20Dispatcher { contract_address: quote_token_address }.transfer(to, quote_token_amount);
 
@@ -502,23 +503,19 @@ mod StarkswapV1Pair {
         sv_reentrancy_lock::write(false);
     }
 
-    //fn _invoke_callee(
-    //base_amount_out: u256,
-    //quote_amount_out: u256,
-    //to: ContractAddress,
-    //calldata_len: felt252,
-    //calldata: felt252*,
-    //) {
-    //let has_calldata = is_not_zero(calldata_len);
-    //if (has_calldata == TRUE) {
-    //let (caller_address) = get_caller_address();
-    //IStarkswapV1Callee.starkswapV1Call(
-    //to, caller_address, base_amount_out, quote_amount_out, calldata_len, calldata
-    //);
-    //return ();
-    //}
-    //return ();
-    //}
+    fn _invoke_callee(
+        base_amount_out: u256,
+        quote_amount_out: u256,
+        to: ContractAddress,
+        calldata: Array<felt252>,
+    ) {
+        if (calldata.len() > 0) {
+            let caller_address = get_caller_address();
+            IStarkswapV1CalleeDispatcher {
+                contract_address: to
+            }.starkswapV1Call(caller_address, base_amount_out, quote_amount_out, calldata);
+        }
+    }
 
     fn _calc_input_amount(reserve: u256, balance: u256, amount_out: u256) -> u256 {
         let r0 = reserve - amount_out;
@@ -572,7 +569,7 @@ mod StarkswapV1Pair {
         _transfer_out(
             base_token_address, quote_token_address, base_amount_out, quote_amount_out, to
         );
-        //_invoke_callee(base_amount_out, quote_amount_out, to, calldata_len, calldata);
+        _invoke_callee(base_amount_out, quote_amount_out, to, calldata);
 
         let base_token_decimals = IERC20Dispatcher {
             contract_address: base_token_address
