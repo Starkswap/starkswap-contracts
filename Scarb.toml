@@ -9,4 +9,5 @@ allowed-libfuncs-list.name = "experimental_v0.1.0"
 
 [dependencies]
 starknet = ">=1.1.0"
-# foo = { path = "vendor/foo" }
+#TODO: replace with real OZ once merged
+openzeppelin = { git = "https://github.com/maciektr/cairo-contracts.git", branch = "maciektr/scarb" }
