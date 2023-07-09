@@ -4,4 +4,5 @@ mod structs;
 mod utils;
 mod StarkswapV1Pair;
 mod StarkswapV1Router;
+mod tests;
 
