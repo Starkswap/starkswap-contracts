@@ -8,8 +8,11 @@ import "@nomiclabs/hardhat-ethers";
 const config: HardhatUserConfig = {
     starknet: {
         network: "integrated-devnet",
-        dockerizedVersion: "0.10.3",
-        //venv: "~/cairo_venv"
+        //dockerizedVersion: "0.11.2",
+
+        // Instead of using the dockerized Scarb, uses the command you provide here
+        // Can be a path or a resolvable command
+        scarbCommand: "scarb",
     },
     networks: {
         integratedDevnet: {
