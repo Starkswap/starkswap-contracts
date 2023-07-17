@@ -31,6 +31,7 @@ mod StarkswapV1Pair {
     //const LOCKING_ADDRESS: ContractAddress = 42; // ERC20 mint does not allow `0`, so we use `42` instead
     const PERIOD_SIZE: felt252 = 1800; // Capture oracle reading every 30 minutes
 
+    #[storage]
     struct Storage {
         sv_base_token_address: ContractAddress,
         sv_quote_token_address: ContractAddress,
@@ -114,12 +115,12 @@ mod StarkswapV1Pair {
     }
 
     #[view]
-    fn totalSupply() -> u256 {
+    fn total_supply() -> u256 {
         return ERC20::total_supply();
     }
 
     #[view]
-    fn balanceOf(account: ContractAddress) -> u256 {
+    fn balance_of(account: ContractAddress) -> u256 {
         return ERC20::balance_of(account);
     }
 
@@ -157,12 +158,12 @@ mod StarkswapV1Pair {
     }
 
     #[view]
-    fn baseToken() -> ContractAddress {
+    fn base_token() -> ContractAddress {
         return sv_base_token_address::read();
     }
 
     #[view]
-    fn quoteToken() -> ContractAddress {
+    fn quote_token() -> ContractAddress {
         return sv_quote_token_address::read();
     }
 
@@ -174,7 +175,7 @@ mod StarkswapV1Pair {
     }
 
     #[view]
-    fn getReserves() -> (u256, u256, u64) {
+    fn get_reserves() -> (u256, u256, u64) {
         let base_token_reserve = sv_base_token_reserve::read();
         let quote_token_reserve = sv_quote_token_reserve::read();
         let timestamp = sv_block_timestamp_last::read();
@@ -184,7 +185,7 @@ mod StarkswapV1Pair {
 
 
     #[view]
-    fn getObservations(num_observations: felt252) -> Array<Observation> {
+    fn get_observations(num_observations: felt252) -> Array<Observation> {
         let mut amounts: Array<Observation> = ArrayTrait::new();
         let count = sv_observations_len::read();
         let mut i: usize = 0;
@@ -201,7 +202,7 @@ mod StarkswapV1Pair {
     }
 
     #[view]
-    fn lastObservation() -> Observation {
+    fn last_observation() -> Observation {
         let count = sv_observations_len::read();
         let observation = sv_observations::read(count - 1);
 
@@ -209,7 +210,7 @@ mod StarkswapV1Pair {
     }
 
     #[view]
-    fn kLast() -> u256 {
+    fn k_last() -> u256 {
         return sv_k_last::read();
     }
 
@@ -217,12 +218,12 @@ mod StarkswapV1Pair {
         let factory_address = factory();
         let fee_to: ContractAddress = IStarkswapV1FactoryDispatcher {
             contract_address: factory_address
-        }.feeTo();
+        }.fee_to_address();
 
         if (fee_to != Zeroable::zero()) {
             // # Fee is on
 
-            let k_last: u256 = kLast();
+            let k_last: u256 = k_last();
             if (k_last != u256_from_felt252(0)) {
                 //TODO: replace with curve get_k?
                 let k = base_token_reserve * quote_token_reserve;
@@ -231,7 +232,7 @@ mod StarkswapV1Pair {
                 let root_k_last = u256 { low: u256_sqrt(k_last), high: 0_u128 };
 
                 if (root_k_last < root_k) {
-                    let total_supply = totalSupply();
+                    let total_supply = total_supply();
 
                     let r0 = root_k - root_k_last;
                     let numerator = total_supply * r0;
@@ -306,7 +307,7 @@ mod StarkswapV1Pair {
             quote_reserve_cumulative_last,
         );
 
-        let last_observation = lastObservation();
+        let last_observation = last_observation();
         let time_elapsed = block_timestamp - last_observation.block_timestamp;
 
         // if (timeElapsed > periodSize)
@@ -389,7 +390,7 @@ mod StarkswapV1Pair {
         let quote_token_amount = quote_token_balance - quote_token_reserve;
 
         let fee_on = _mint_fee(base_token_reserve, quote_token_reserve);
-        let total_supply = totalSupply();
+        let total_supply = total_supply();
 
         let liquidity = _calculate_liquidity(
             total_supply,
@@ -434,10 +435,10 @@ mod StarkswapV1Pair {
         let quote_token_balance = IERC20Dispatcher {
             contract_address: quote_token_address
         }.balance_of(this_pair_address);
-        let liquidity = balanceOf(this_pair_address);
+        let liquidity = balance_of(this_pair_address);
 
         let fee_on = _mint_fee(base_token_reserve, quote_token_reserve);
-        let total_supply = totalSupply();
+        let total_supply = total_supply();
 
         let base_token_amount = (liquidity * base_token_balance) / total_supply;
 

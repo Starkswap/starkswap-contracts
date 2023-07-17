@@ -5,22 +5,22 @@ use starkswap_contracts::structs::pair::Pair;
 
 #[abi]
 trait IStarkswapV1Factory {
-    fn feeTo() -> ContractAddress;
-    fn pairClassHash() -> ClassHash;
-    fn feeToSetter() -> ContractAddress;
-    fn getCurve(curve_class_hash: ClassHash) -> ClassHash;
-    fn getPair(
+    fn fee_to_address() -> ContractAddress;
+    fn pair_class_hash() -> ClassHash;
+    fn fee_to_setter_address() -> ContractAddress;
+    fn curve_class_hash(curve_class_hash: ClassHash) -> bool;
+    fn get_pair(
         token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
     ) -> ContractAddress;
-    fn allPairs(index: felt252) -> felt252;
-    fn allPairsLength() -> felt252;
-    fn getAllPairs() -> Array<Pair>;
-    fn createPair(
+    fn all_pairs(index: u64) -> ContractAddress;
+    fn all_pairs_length() -> u64;
+    fn get_all_pairs() -> Array<Pair>;
+    fn create_pair(
         token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
     ) -> ContractAddress;
-    fn setFeeTo(address: ContractAddress) -> ContractAddress;
-    fn setFeeToSetter(address: ContractAddress) -> ContractAddress;
-    fn setPairClassHash(pair_class_hash: ClassHash) -> ClassHash;
-    fn addCurve(curve_class_hash: ClassHash) -> ClassHash;
-    fn getBalances(account: ContractAddress) -> Array<Balance>;
+    fn set_fee_to_address(address: ContractAddress);
+    fn set_fee_to_setter_address(address: ContractAddress);
+    fn set_pair_class_hash(pair_class_hash: ClassHash);
+    fn add_curve_class_hash(curve_class_hash: ClassHash);
+    fn get_balances(account: ContractAddress) -> Array<Balance>;
 }

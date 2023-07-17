@@ -11,9 +11,8 @@ fn test_initializer() {
     let owner: ContractAddress = contract_address_const::<1>();
     let base_pair = ERC20::constructor('Token A', 'TKA', INITIAL_SUPPLY, owner);
     let quote_pair = ERC20::constructor('Token B', 'TKB', INITIAL_SUPPLY, owner);
-
-    //let pair = StarkswapV1Pair::constructor(
-        //base_pair::address(),
-        //quote_pair::address()
-    //);
+//let pair = StarkswapV1Pair::constructor(
+//base_pair::address(),
+//quote_pair::address()
+//);
 }
