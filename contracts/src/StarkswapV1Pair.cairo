@@ -11,10 +11,10 @@ mod StarkswapV1Pair {
     use starkswap_contracts::interfaces::IStarkswapV1Callee::IStarkswapV1CalleeDispatcherTrait;
     use starkswap_contracts::interfaces::IStarkswapV1Callee::IStarkswapV1CalleeDispatcher;
     use starkswap_contracts::utils::decimals::make_18_dec;
-    use openzeppelin::token::erc20::IERC20;
-    use openzeppelin::token::erc20::IERC20DispatcherTrait;
-    use openzeppelin::token::erc20::IERC20Dispatcher;
-    use openzeppelin::token::erc20::ERC20;
+    use openzeppelin::token::erc20::interface::IERC20;
+    use openzeppelin::token::erc20::interface::IERC20DispatcherTrait;
+    use openzeppelin::token::erc20::interface::IERC20Dispatcher;
+    use openzeppelin::token::erc20::erc20::ERC20;
     use starknet::ContractAddress;
     use starknet::ClassHash;
     use starknet::get_caller_address;

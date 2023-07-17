@@ -33,9 +33,9 @@ mod StarkswapV1Router {
     use starkswap_contracts::structs::observation::Observation;
     use starkswap_contracts::utils::sort::_sort_tokens;
     use starkswap_contracts::utils::sort::_sort_amounts;
-    use openzeppelin::token::erc20::IERC20;
-    use openzeppelin::token::erc20::IERC20DispatcherTrait;
-    use openzeppelin::token::erc20::IERC20Dispatcher;
+    use openzeppelin::token::erc20::interface::IERC20;
+    use openzeppelin::token::erc20::interface::IERC20DispatcherTrait;
+    use openzeppelin::token::erc20::interface::IERC20Dispatcher;
 
     #[storage]
     struct Storage {

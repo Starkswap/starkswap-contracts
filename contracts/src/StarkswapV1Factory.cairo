@@ -18,9 +18,9 @@ mod StarkswapV1Factory {
     use starkswap_contracts::structs::token::Token;
     use starkswap_contracts::structs::balance::Balance;
     use starkswap_contracts::utils::sort::_sort_tokens;
-    use openzeppelin::token::erc20::IERC20;
-    use openzeppelin::token::erc20::IERC20DispatcherTrait;
-    use openzeppelin::token::erc20::IERC20Dispatcher;
+    use openzeppelin::token::erc20::interface::IERC20;
+    use openzeppelin::token::erc20::interface::IERC20DispatcherTrait;
+    use openzeppelin::token::erc20::interface::IERC20Dispatcher;
     use hash::LegacyHash;
     use traits::Into;
 
