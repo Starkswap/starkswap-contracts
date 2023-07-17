@@ -18,7 +18,7 @@ const SWAP_IN_AMOUNT = 1000n
 const SWAP_OUT_AMOUNT = 906n
 
 describe('StarkswapV1Router', function () {
-    this.timeout(600_000);
+    this.timeout(300_000);
 
     let setter: Account
     let fFixture: FactoryFixture
@@ -37,7 +37,7 @@ describe('StarkswapV1Router', function () {
             amount: toUint256(TRANSFER_AMOUNT)
         })
 
-        await setter.invoke(router, 'addLiquidity', {
+        await setter.invoke(router, 'add_liquidity', {
             token_a_address: tokenA.address,
             token_b_address: tokenB.address,
             curve: curve,
@@ -51,17 +51,14 @@ describe('StarkswapV1Router', function () {
     }
 
     async function getPairFromFactory(factory: StarknetContract, tokenAAddress: string, tokenBAddress: string, curve: string): Promise<StarknetContract> {
-        const pairProxyContractFactory = await starknet.getContractFactory("PairProxy")
-        const pairContractFactory = await starknet.getContractFactory("StarkswapV1Pair")
-        const res = await factory.call("getPair", {
+        const pairContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Pair")
+        const res = await factory.call("get_pair", {
             token_a_address: tokenAAddress,
             token_b_address: tokenBAddress,
             curve: curve
         })
-        const pairAddress = fromStringToHex(res.pair_address);
-        const pairProxyContract = pairProxyContractFactory.getContractAt(pairAddress);
-        pairProxyContract.setImplementation(pairContractFactory);
-        return pairProxyContract;
+        const pairAddress = fromStringToHex(res.pair_address)
+        return pairContractFactory.getContractAt(pairAddress);
     }
 
     before(async () => {
@@ -128,11 +125,11 @@ describe('StarkswapV1Router', function () {
 
         })
 
-        it('getAmountOut', async () => {
+        it('get_amount_out', async () => {
             const router = rFixture.router
             const volatileClassHash = fFixture.volatileClassHash
 
-            expect((await router.call('getAmountOut', {
+            expect((await router.call('get_amount_out', {
                 amount_in: toUint256(BigInt(2)),
                 reserve_in: toUint256(BigInt(100)),
                 reserve_out: toUint256(BigInt(100)),
@@ -142,7 +139,7 @@ describe('StarkswapV1Router', function () {
             })).amount_out).to.deep.eq(toUint256(BigInt(1)))
 
             try {
-                await router.call('getAmountOut', {
+                await router.call('get_amount_out', {
                     amount_in: toUint256(BigInt(0)),
                     reserve_in: toUint256(BigInt(100)),
                     reserve_out: toUint256(BigInt(100)),
@@ -155,7 +152,7 @@ describe('StarkswapV1Router', function () {
             }
 
             try {
-                await router.call('getAmountOut', {
+                await router.call('get_amount_out', {
                     amount_in: toUint256(BigInt(2)),
                     reserve_in: toUint256(BigInt(0)),
                     reserve_out: toUint256(BigInt(100)),
@@ -168,7 +165,7 @@ describe('StarkswapV1Router', function () {
             }
 
             try {
-                await router.call('getAmountOut', {
+                await router.call('get_amount_out', {
                     amount_in: toUint256(BigInt(2)),
                     reserve_in: toUint256(BigInt(100)),
                     reserve_out: toUint256(BigInt(0)),
@@ -182,11 +179,11 @@ describe('StarkswapV1Router', function () {
 
         })
 
-        it('getAmountIn', async () => {
+        it('get_amount_in', async () => {
             const router = rFixture.router
             const volatileClassHash = fFixture.volatileClassHash
 
-            expect((await router.call('getAmountIn', {
+            expect((await router.call('get_amount_in', {
                 amount_out: toUint256(BigInt(1)),
                 reserve_in: toUint256(BigInt(100)),
                 reserve_out: toUint256(BigInt(100)),
@@ -196,7 +193,7 @@ describe('StarkswapV1Router', function () {
             })).amount_in).to.deep.eq(toUint256(BigInt(2)))
 
             try {
-                await router.call('getAmountIn', {
+                await router.call('get_amount_in', {
                     amount_out: toUint256(BigInt(0)),
                     reserve_in: toUint256(BigInt(100)),
                     reserve_out: toUint256(BigInt(100)),
@@ -209,7 +206,7 @@ describe('StarkswapV1Router', function () {
             }
 
             try {
-                await router.call('getAmountIn', {
+                await router.call('get_amount_in', {
                     amount_out: toUint256(BigInt(1)),
                     reserve_in: toUint256(BigInt(0)),
                     reserve_out: toUint256(BigInt(100)),
@@ -222,7 +219,7 @@ describe('StarkswapV1Router', function () {
             }
 
             try {
-                await router.call('getAmountIn', {
+                await router.call('get_amount_in', {
                     amount_out: toUint256(BigInt(1)),
                     reserve_in: toUint256(BigInt(100)),
                     reserve_out: toUint256(BigInt(0)),
@@ -238,7 +235,7 @@ describe('StarkswapV1Router', function () {
 
     })
 
-    describe( 'getAmountsOut,getAmountsIn', () => {
+    describe( 'get_amounts_out,get_amounts_in', () => {
 
         before(async () => {
             fFixture = await factoryFixture(setter)
@@ -246,7 +243,7 @@ describe('StarkswapV1Router', function () {
             tFixture = await tokenFixture(setter)
         })
 
-        it('getAmountsOut', async () => {
+        it('get_amounts_out', async () => {
 
             const router = rFixture.router
             const volatileClassHash = fFixture.volatileClassHash
@@ -256,7 +253,7 @@ describe('StarkswapV1Router', function () {
             await addLiquidity(setter, router, tokenA, tokenB, volatileClassHash)
 
             try {
-                await router.call('getAmountsOut', {
+                await router.call('get_amounts_out', {
                     amount_in: toUint256(2n),
                     routes: [
                         {input: tokenA.address, output: 0n, curve: volatileClassHash}
@@ -267,7 +264,7 @@ describe('StarkswapV1Router', function () {
             }
 
             try {
-                await router.call('getAmountsOut', {
+                await router.call('get_amounts_out', {
                     amount_in: toUint256(2n),
                     routes: [
                         {input: tokenA.address, output: 1n, curve: volatileClassHash}
@@ -277,7 +274,7 @@ describe('StarkswapV1Router', function () {
                 expect(e.message).to.contain('StarkswapV1Router: INVALID_PATH')
             }
 
-            expect(await router.call('getAmountsOut', {
+            expect(await router.call('get_amounts_out', {
                 amount_in: toUint256(2n),
                 routes: [
                     {input: tokenA.address, output: tokenB.address, curve: volatileClassHash}
@@ -286,7 +283,7 @@ describe('StarkswapV1Router', function () {
 
         })
 
-        it('getAmountsIn', async () => {
+        it('get_amounts_in', async () => {
 
             const router = rFixture.router
             const volatileClassHash = fFixture.volatileClassHash
@@ -296,7 +293,7 @@ describe('StarkswapV1Router', function () {
             await addLiquidity(setter, router, tokenA, tokenB, volatileClassHash)
 
             try {
-                await router.call('getAmountsIn', {
+                await router.call('get_amounts_in', {
                     amount_out: toUint256(2n),
                     routes: [
                         {input: tokenA.address, output: 0n, curve: volatileClassHash}
@@ -307,7 +304,7 @@ describe('StarkswapV1Router', function () {
             }
 
             try {
-                await router.call('getAmountsIn', {
+                await router.call('get_amounts_in', {
                     amount_out: toUint256(2n),
                     routes: [
                         {input: tokenA.address, output: 1n, curve: volatileClassHash}
@@ -317,7 +314,7 @@ describe('StarkswapV1Router', function () {
                 expect(e.message).to.contain('StarkswapV1Router: INVALID_PATH')
             }
 
-            expect(await router.call('getAmountsIn', {
+            expect(await router.call('get_amounts_in', {
                 amount_out: toUint256(1n),
                 routes: [
                     {input: tokenA.address, output: tokenB.address, curve: volatileClassHash}
@@ -328,7 +325,7 @@ describe('StarkswapV1Router', function () {
 
     })
 
-    describe( 'addLiquidity,removeLiquidity', () => {
+    describe( 'add_liquidity,remove_liquidity', () => {
 
         beforeEach(async () => {
             fFixture = await factoryFixture(setter)
@@ -336,7 +333,7 @@ describe('StarkswapV1Router', function () {
             tFixture = await tokenFixture(setter)
         })
 
-        it('addLiquidity', async () => {
+        it('add_liquidity', async () => {
 
             const router = rFixture.router
             const volatileClassHash = fFixture.volatileClassHash
@@ -350,21 +347,21 @@ describe('StarkswapV1Router', function () {
             await addLiquidity(setter, router, tokenA, tokenB, volatileClassHash)
             pair = await getPairFromFactory(factory, tokenA.address, tokenB.address, volatileClassHash)
 
-            expect(await pair.call( 'balanceOf', {
+            expect(await pair.call( 'balance_of', {
                 account: setter.address
             })).to.deep.eq({ balance: toUint256(9000n) })
 
-            expect(await tokenA.call( 'balanceOf', {
+            expect(await tokenA.call( 'balance_of', {
                 account: setter.address
             })).to.deep.eq({ balance: toUint256(expandTo18Decimals(INITIAL_SUPPLY) - 10000n) })
 
-            expect(await tokenB.call( 'balanceOf', {
+            expect(await tokenB.call( 'balance_of', {
                 account: setter.address
             })).to.deep.eq({ balance: toUint256(expandTo18Decimals(INITIAL_SUPPLY) - 10000n) })
 
         })
 
-        it('removeLiquidity', async () => {
+        it('remove_liquidity', async () => {
 
             const router = rFixture.router
             const volatileClassHash = fFixture.volatileClassHash
@@ -380,7 +377,7 @@ describe('StarkswapV1Router', function () {
                 amount: toUint256(1000n)
             })
 
-            await setter.invoke(router, 'removeLiquidity', {
+            await setter.invoke(router, 'remove_liquidity', {
                 token_a_address: tokenA.address,
                 token_b_address: tokenB.address,
                 curve: volatileClassHash,
@@ -392,12 +389,11 @@ describe('StarkswapV1Router', function () {
             })
 
             const expectedAmount = expandTo18Decimals(INITIAL_SUPPLY) - TRANSFER_AMOUNT + SWAP_IN_AMOUNT
-            expect(await tokenA.call( 'balanceOf', {
+            expect(await tokenA.call( 'balance_of', {
                 account: setter.address
             })).to.deep.eq({ balance: toUint256(expectedAmount) })
 
-            console.log("Some 4");
-            expect(await tokenB.call( 'balanceOf', {
+            expect(await tokenB.call( 'balance_of', {
                 account: setter.address
             })).to.deep.eq({ balance: toUint256(expectedAmount) })
 
@@ -413,7 +409,7 @@ describe('StarkswapV1Router', function () {
             tFixture = await tokenFixture(setter)
         })
 
-        it('swapExactTokensForTokens:volatile', async () => {
+        it('swap_exact_tokens_for_tokens:volatile', async () => {
 
             const router = rFixture.router
             const volatileClassHash = fFixture.volatileClassHash
@@ -428,7 +424,7 @@ describe('StarkswapV1Router', function () {
             })
 
             try {
-                await setter.invoke( router, 'swapExactTokensForTokens', {
+                await setter.invoke( router, 'swap_exact_tokens_for_tokens', {
                     amount_in: toUint256(SWAP_IN_AMOUNT),
                     amount_out_min: toUint256(SWAP_OUT_AMOUNT),
                     routes: [
@@ -441,7 +437,7 @@ describe('StarkswapV1Router', function () {
                 expect(e.message).to.contain('StarkswapV1Router: INVALID_PATH')
             }
 
-            await setter.invoke( router, 'swapExactTokensForTokens', {
+            await setter.invoke( router, 'swap_exact_tokens_for_tokens', {
                 amount_in: toUint256(SWAP_IN_AMOUNT),
                 amount_out_min: toUint256(SWAP_OUT_AMOUNT),
                 routes: [
@@ -451,13 +447,13 @@ describe('StarkswapV1Router', function () {
                 deadline: 99999999999999999999999n
             })
 
-            expect(await tokenB.call( 'balanceOf', {
+            expect(await tokenB.call( 'balance_of', {
                 account: setter.address
             })).to.deep.eq({ balance: toUint256(expandTo18Decimals(INITIAL_SUPPLY) - TRANSFER_AMOUNT + SWAP_OUT_AMOUNT) })
 
         })
 
-        it('swapTokensForExactTokens:volatile', async () => {
+        it('swap_tokens_for_exact_tokens:volatile', async () => {
 
             const router = rFixture.router
             const volatileClassHash = fFixture.volatileClassHash
@@ -472,7 +468,7 @@ describe('StarkswapV1Router', function () {
             })
 
             try {
-                await setter.invoke( router, 'swapTokensForExactTokens', {
+                await setter.invoke( router, 'swap_tokens_for_exact_tokens', {
                     amount_out: toUint256(SWAP_OUT_AMOUNT),
                     amount_in_max: toUint256(SWAP_IN_AMOUNT),
                     routes: [
@@ -485,7 +481,7 @@ describe('StarkswapV1Router', function () {
                 expect(e.message).to.contain('StarkswapV1Router: INVALID_PATH')
             }
 
-            await setter.invoke( router, 'swapTokensForExactTokens', {
+            await setter.invoke( router, 'swap_tokens_for_exact_tokens', {
                 amount_out: toUint256(SWAP_OUT_AMOUNT),
                 amount_in_max: toUint256(SWAP_IN_AMOUNT),
                 routes: [
@@ -495,7 +491,7 @@ describe('StarkswapV1Router', function () {
                 deadline: 99999999999999999999999n
             })
 
-            expect(await tokenB.call( 'balanceOf', {
+            expect(await tokenB.call( 'balance_of', {
                 account: setter.address
             })).to.deep.eq({ balance: toUint256(expandTo18Decimals(INITIAL_SUPPLY) - TRANSFER_AMOUNT + SWAP_OUT_AMOUNT) })
 

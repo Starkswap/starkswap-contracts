@@ -78,12 +78,12 @@ describe("StarkswapV1Pair", function () {
             {name: "ev_mint", data: {sender: BigInt(wallet.address), base_amount: toUint256(baseTokenAmount), quote_amount: toUint256(quoteTokenAmount)}}
         ])
 
-        expect(await pair.call("totalSupply").then(res => fromUint256(res.totalSupply)))
+        expect(await pair.call("total_supply").then(res => fromUint256(res.totalSupply)))
             .to.be.equal(expectedLiquidity)
-        expect(await pair.call("balanceOf", {account: wallet.address}).then(res => fromUint256(res.balance)))
+        expect(await pair.call("balance_of", {account: wallet.address}).then(res => fromUint256(res.balance)))
             .to.be.equal(expectedLiquidity - MINIMUM_LIQUIDITY)
 
-        const reserves = await pair.call("getReserves")
+        const reserves = await pair.call("get_reserves")
         expect(fromUint256(reserves.base_token_reserve)).to.be.equal(expandTo18Decimals(1n))
         expect(fromUint256(reserves.quote_token_reserve)).to.be.equal(expandTo18Decimals(4n))
     });
@@ -101,7 +101,7 @@ describe("StarkswapV1Pair", function () {
         [1, 1000, 1000, "996006981039903216"]
     ].map(a => a.map(n => (typeof n === 'string' ? BigInt(n) : expandTo18Decimals(BigInt(n)))))
     swapTestCases.forEach((swapTestCase, i) => {
-        it(`getInputPrice:${i}`, async () => {
+        it(`get_input_price:${i}`, async () => {
             const [swapAmount, baseTokenAmount, quoteTokenAmount, expectedOutputAmount] = swapTestCase
             await addLiquidity(baseTokenAmount, quoteTokenAmount)
             await wallet.invoke(baseToken, "transfer", {recipient: pair.address, amount: toUint256(swapAmount)})
@@ -193,19 +193,19 @@ describe("StarkswapV1Pair", function () {
             }
         ]);
 
-        const reserves = await pair.call("getReserves")
+        const reserves = await pair.call("get_reserves")
         expect(fromUint256(reserves.base_token_reserve)).to.eq(baseTokenAmount + swapAmount)
         expect(fromUint256(reserves.quote_token_reserve)).to.eq(quoteTokenAmount - expectedOutputAmount)
 
-        expect(await baseToken.call("balanceOf", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(baseTokenAmount + swapAmount)
-        expect(await quoteToken.call("balanceOf", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(quoteTokenAmount - expectedOutputAmount)
-        const totalSupplyBaseToken: bigint = await baseToken.call("totalSupply").then(res => fromUint256(res.totalSupply))
-        const totalSupplyQuoteToken: bigint = await quoteToken.call("totalSupply").then(res => fromUint256(res.totalSupply))
-        expect(await baseToken.call("balanceOf", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyBaseToken - baseTokenAmount - swapAmount)
-        expect(await quoteToken.call("balanceOf", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyQuoteToken - quoteTokenAmount + expectedOutputAmount)
+        expect(await baseToken.call("balance_of", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(baseTokenAmount + swapAmount)
+        expect(await quoteToken.call("balance_of", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(quoteTokenAmount - expectedOutputAmount)
+        const totalSupplyBaseToken: bigint = await baseToken.call("total_supply").then(res => fromUint256(res.totalSupply))
+        const totalSupplyQuoteToken: bigint = await quoteToken.call("total_supply").then(res => fromUint256(res.totalSupply))
+        expect(await baseToken.call("balance_of", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyBaseToken - baseTokenAmount - swapAmount)
+        expect(await quoteToken.call("balance_of", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyQuoteToken - quoteTokenAmount + expectedOutputAmount)
     })
 
-    it('swap:quoteToken', async () => {
+    it('swap:quote_token', async () => {
         const baseTokenAmount = expandTo18Decimals(5n)
         const quoteTokenAmount = expandTo18Decimals(10n)
         await addLiquidity(baseTokenAmount, quoteTokenAmount)
@@ -240,16 +240,16 @@ describe("StarkswapV1Pair", function () {
             }
         ]);
 
-        const reserves = await pair.call("getReserves")
+        const reserves = await pair.call("get_reserves")
         expect(fromUint256(reserves.base_token_reserve)).to.eq(baseTokenAmount - expectedOutputAmount)
         expect(fromUint256(reserves.quote_token_reserve)).to.eq(quoteTokenAmount + swapAmount)
 
-        expect(await baseToken.call("balanceOf", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(baseTokenAmount - expectedOutputAmount)
-        expect(await quoteToken.call("balanceOf", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(quoteTokenAmount + swapAmount)
-        const totalSupplyBaseToken: bigint = await baseToken.call("totalSupply").then(res => fromUint256(res.totalSupply))
-        const totalSupplyQuoteToken: bigint = await quoteToken.call("totalSupply").then(res => fromUint256(res.totalSupply))
-        expect(await baseToken.call("balanceOf", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyBaseToken - baseTokenAmount + expectedOutputAmount)
-        expect(await quoteToken.call("balanceOf", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyQuoteToken - quoteTokenAmount - swapAmount)
+        expect(await baseToken.call("balance_of", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(baseTokenAmount - expectedOutputAmount)
+        expect(await quoteToken.call("balance_of", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(quoteTokenAmount + swapAmount)
+        const totalSupplyBaseToken: bigint = await baseToken.call("total_supply").then(res => fromUint256(res.totalSupply))
+        const totalSupplyQuoteToken: bigint = await quoteToken.call("total_supply").then(res => fromUint256(res.totalSupply))
+        expect(await baseToken.call("balance_of", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyBaseToken - baseTokenAmount + expectedOutputAmount)
+        expect(await quoteToken.call("balance_of", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyQuoteToken - quoteTokenAmount - swapAmount)
     })
 
     // Uni has a swap:gas test that validates some gas cost, not sure we want/need that
@@ -276,14 +276,14 @@ describe("StarkswapV1Pair", function () {
 
         ]);
 
-        expect(await pair.call("balanceOf", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(0n)
-        expect(await pair.call("totalSupply").then(res => fromUint256(res.totalSupply))).to.eq(MINIMUM_LIQUIDITY)
-        expect(await baseToken.call("balanceOf", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(1000n)
-        expect(await quoteToken.call("balanceOf", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(1000n)
-        const totalSupplyBaseToken: bigint = await baseToken.call("totalSupply").then(res => fromUint256(res.totalSupply))
-        const totalSupplyQuoteToken: bigint = await quoteToken.call("totalSupply").then(res => fromUint256(res.totalSupply))
-        expect(await baseToken.call("balanceOf", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyBaseToken -1000n)
-        expect(await quoteToken.call("balanceOf", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyQuoteToken - 1000n)
+        expect(await pair.call("balance_of", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(0n)
+        expect(await pair.call("total_supply").then(res => fromUint256(res.totalSupply))).to.eq(MINIMUM_LIQUIDITY)
+        expect(await baseToken.call("balance_of", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(1000n)
+        expect(await quoteToken.call("balance_of", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(1000n)
+        const totalSupplyBaseToken: bigint = await baseToken.call("total_supply").then(res => fromUint256(res.totalSupply))
+        const totalSupplyQuoteToken: bigint = await quoteToken.call("total_supply").then(res => fromUint256(res.totalSupply))
+        expect(await baseToken.call("balance_of", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyBaseToken -1000n)
+        expect(await quoteToken.call("balance_of", {account: wallet.address}).then(res => fromUint256(res.balance))).to.eq(totalSupplyQuoteToken - 1000n)
     })
 
     //TODO: add expectations for cumulative values
@@ -310,7 +310,7 @@ describe("StarkswapV1Pair", function () {
         expect(twoObservations.observations).to.deep.equal([secondObservation.observation, thirdObservation.observation])
     })
 
-    it('feeTo:off', async () => {
+    it('fee_to:off', async () => {
         const baseTokenAmount = expandTo18Decimals(1000n)
         const quoteTokenAmount = expandTo18Decimals(1000n)
         await addLiquidity(baseTokenAmount, quoteTokenAmount)
@@ -328,16 +328,16 @@ describe("StarkswapV1Pair", function () {
         const expectedLiquidity = expandTo18Decimals(1000n)
         await wallet.invoke(pair, "transfer", {recipient: pair.address, amount: toUint256(expectedLiquidity - MINIMUM_LIQUIDITY)})
         await wallet.invoke(pair, "burn", {to: wallet.address})
-        expect(await pair.call("totalSupply").then(res => fromUint256(res.totalSupply))).to.eq(MINIMUM_LIQUIDITY)
+        expect(await pair.call("total_supply").then(res => fromUint256(res.totalSupply))).to.eq(MINIMUM_LIQUIDITY)
     })
 
-    it('feeTo:on', async () => {
+    it('fee_to:on', async () => {
         const accounts: PredeployedAccount[] = await starknet.devnet.getPredeployedAccounts()
         const other  = await starknet.OpenZeppelinAccount.getAccountFromAddress(
             accounts[2].address,
             accounts[2].private_key
         )
-        await wallet.invoke(factory, "setFeeTo", {address: other.address})
+        await wallet.invoke(factory, "set_fee_to", {address: other.address})
 
         const baseTokenAmount = expandTo18Decimals(1000n)
         const quoteTokenAmount = expandTo18Decimals(1000n)
@@ -357,13 +357,13 @@ describe("StarkswapV1Pair", function () {
         await wallet.invoke(pair, "transfer", {recipient: pair.address, amount: toUint256(expectedLiquidity - MINIMUM_LIQUIDITY)})
         await wallet.invoke(pair, "burn", {to: wallet.address})
 
-        expect(await pair.call("totalSupply").then(res => fromUint256(res.totalSupply))).to.eq(MINIMUM_LIQUIDITY + BigInt('249750499251388'))
-        expect(await pair.call("balanceOf", {account: other.address}).then(res => fromUint256(res.balance))).to.eq(BigInt('249750499251388'))
+        expect(await pair.call("total_supply").then(res => fromUint256(res.totalSupply))).to.eq(MINIMUM_LIQUIDITY + BigInt('249750499251388'))
+        expect(await pair.call("balance_of", {account: other.address}).then(res => fromUint256(res.balance))).to.eq(BigInt('249750499251388'))
 
         // using 1000 here instead of the symbolic MINIMUM_LIQUIDITY because the amounts only happen to be equal...
         // ...because the initial liquidity amounts were equal
-        expect(await baseToken.call("balanceOf", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(1000n + BigInt('249501683697445'))
-        expect(await quoteToken.call("balanceOf", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(1000n + BigInt('250000187312969'))
+        expect(await baseToken.call("balance_of", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(1000n + BigInt('249501683697445'))
+        expect(await quoteToken.call("balance_of", {account: pair.address}).then(res => fromUint256(res.balance))).to.eq(1000n + BigInt('250000187312969'))
     })
 
 });

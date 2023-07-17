@@ -23,12 +23,12 @@ describe('StarkswapV1Factory', function () {
         )
     })
 
-    it('feeTo, feeToSetter, allPairsLength', async () => {
+    it('fee_to, fee_to_setter, all_pairs_length', async () => {
         const fixture = await factoryFixture(setter)
         const factory = fixture.factory
-        expect((await factory.call('feeTo')).address).to.eq(BigInt(0))
-        expect((await factory.call('feeToSetter')).address).to.eq(BigInt(setter.address))
-        expect((await factory.call('allPairsLength')).all_pairs_length).to.eq(BigInt(0))
+        expect((await factory.call('fee_to')).address).to.eq(BigInt(0))
+        expect((await factory.call('fee_to_setter')).address).to.eq(BigInt(setter.address))
+        expect((await factory.call('all_pairs_length')).all_pairs_length).to.eq(BigInt(0))
     })
 
     async function createPair(reverse: boolean) {
@@ -42,7 +42,7 @@ describe('StarkswapV1Factory', function () {
         const volatileCurve = fFixture.volatileClassHash
 
         try {
-            await setter.invoke(factory, 'createPair', {
+            await setter.invoke(factory, 'create_pair', {
                 token_a_address: baseToken.address,
                 token_b_address: quoteToken.address,
                 curve: volatileCurve
@@ -52,7 +52,7 @@ describe('StarkswapV1Factory', function () {
         }
 
         try {
-            await setter.invoke(factory, 'createPair', {
+            await setter.invoke(factory, 'create_pair', {
                 token_a_address: quoteToken.address,
                 token_b_address: baseToken.address,
                 curve: volatileCurve
@@ -61,88 +61,88 @@ describe('StarkswapV1Factory', function () {
             expect(e.message).to.contain('StarkswapV1Factory: PAIR_EXISTS')
         }
 
-        expect((await factory.call('getPair', {
+        expect((await factory.call('get_pair', {
             token_a_address: baseToken.address,
             token_b_address: quoteToken.address,
             curve: volatileCurve
         })).pair_address).to.eq(BigInt(pair.address))
 
-        expect((await factory.call('getPair', {
+        expect((await factory.call('get_pair', {
             token_a_address: quoteToken.address,
             token_b_address: baseToken.address,
             curve: volatileCurve
         })).pair_address).to.eq(BigInt(pair.address))
 
-        expect((await factory.call('allPairs', {
+        expect((await factory.call('all_pairs', {
             index: 0
         })).pair_address).to.eq(BigInt(pair.address))
 
-        await setter.invoke(factory, 'createPair', {
+        await setter.invoke(factory, 'create_pair', {
             token_a_address: baseToken.address,
             token_b_address: quoteToken.address,
             curve: stableCurve
         });
 
-        const stable_pair_address = (await factory.call('getPair', {
+        const stable_pair_address = (await factory.call('get_pair', {
             token_a_address: baseToken.address,
             token_b_address: quoteToken.address,
             curve: stableCurve
         })).pair_address
 
-        expect((await factory.call('allPairs', {
+        expect((await factory.call('all_pairs', {
             index: 1
         })).pair_address).to.eq(stable_pair_address)
 
-        expect((await factory.call('allPairsLength')).all_pairs_length).to.eq(BigInt(2))
+        expect((await factory.call('all_pairs_length')).all_pairs_length).to.eq(BigInt(2))
         expect((await pair.call('factory')).address).to.eq(BigInt(factory.address))
-        expect((await pair.call('baseToken')).address).to.eq(BigInt(baseToken.address))
-        expect((await pair.call('quoteToken')).address).to.eq(BigInt(quoteToken.address))
+        expect((await pair.call('base_token')).address).to.eq(BigInt(baseToken.address))
+        expect((await pair.call('quote_token')).address).to.eq(BigInt(quoteToken.address))
         expect((await pair.call('curve')).curve_class_hash).to.eq(BigInt(volatileCurve))
     }
 
-    it('createPair', async () => {
+    it('create_pair', async () => {
         await createPair(false)
     })
 
-    it('createPair:reverse', async () => {
+    it('create_pair:reverse', async () => {
         await createPair(true)
     })
 
-    it('setFeeTo', async () => {
+    it('set_fee_to', async () => {
         const fixture = await factoryFixture(setter)
         const factory = fixture.factory
         try {
-            await account.invoke(factory, 'setFeeTo', {
+            await account.invoke(factory, 'set_fee_to', {
                 address: account.address
             });
         } catch (e: any) {
             expect(e.message).to.contain('StarkswapV1Factory: FORBIDDEN')
         }
 
-        await setter.invoke(factory, 'setFeeTo', {
+        await setter.invoke(factory, 'set_fee_to', {
             address: account.address
         });
-        expect((await factory.call('feeTo')).address).to.eq(BigInt(account.address))
+        expect((await factory.call('fee_to')).address).to.eq(BigInt(account.address))
     })
 
-    it('setFeeToSetter', async () => {
+    it('set_fee_to_setter', async () => {
         const fixture = await factoryFixture(setter)
         const factory = fixture.factory
         try {
-            await account.invoke(factory, 'setFeeToSetter', {
+            await account.invoke(factory, 'set_fee_to_setter', {
                 address: account.address
             });
         } catch (e: any) {
             expect(e.message).to.contain('StarkswapV1Factory: FORBIDDEN')
         }
 
-        await setter.invoke(factory, 'setFeeToSetter', {
+        await setter.invoke(factory, 'set_fee_to_setter', {
             address: account.address
         });
         expect((await factory.call('feeToSetter')).address).to.eq(BigInt(account.address))
 
         try {
-            await setter.invoke(factory, 'setFeeToSetter', {
+            await setter.invoke(factory, 'set_fee_to_setter', {
                 address: setter.address
             });
         } catch (e: any) {

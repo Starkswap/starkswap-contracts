@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "description": "Starkswap V1 contracts",
   "scripts": {
-    "compile": "yarn hardhat starknet-build",
-    "test": "yarn hardhat test"
+    "build": "yarn hardhat starknet-build",
+    "test": "yarn hardhat --network localhost test"
   },
   "repository": {
     "type": "git",
