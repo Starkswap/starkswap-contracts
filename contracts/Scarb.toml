@@ -10,6 +10,7 @@ casm=true
 allowed-libfuncs-list.name = "experimental_v0.1.0"
 allowed-libfuncs=true
 allowed-libfuncs-deny = false
+casm-add-pythonic-hints = true
 
 [dependencies]
 starknet = ">=1.1.0"
