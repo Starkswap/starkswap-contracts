@@ -1,4 +1,4 @@
-#[contract]
+#[starknet::contract]
 mod StarkswapV1Factory {
     use starknet::get_caller_address;
     use starknet::ContractAddress;
@@ -44,204 +44,193 @@ mod StarkswapV1Factory {
     }
 
     #[constructor]
-    fn constructor(fee_to_setter_address: ContractAddress, pair_class_hash: ClassHash) {
+    fn constructor(ref self: ContractState, fee_to_setter_address: ContractAddress, pair_class_hash: ClassHash) {
         assert(!fee_to_setter_address.is_zero(), 'ZERO_FEE_TO_SETTER_ADDRESS');
         assert(!pair_class_hash.is_zero(), 'ZERO_PAIR_CLASS_HASH');
-        sv_fee_to_setter_address::write(fee_to_setter_address);
-        sv_pair_class_hash::write(pair_class_hash);
+        self.sv_fee_to_setter_address.write(fee_to_setter_address);
+        self.sv_pair_class_hash.write(pair_class_hash);
     }
 
-    #[view]
-    fn fee_to_address() -> ContractAddress {
-        return sv_fee_to_address::read();
-    }
+    #[external(v0)]
+    impl StarkswapV1Factory of starkswap_contracts::interfaces::IStarkswapV1Factory::IStarkswapV1Factory<ContractState> {
+        fn fee_to_address(self: @ContractState) -> ContractAddress {
+            return self.sv_fee_to_address.read();
+        }
 
-    #[view]
-    fn pair_class_hash() -> ClassHash {
-        return sv_pair_class_hash::read();
-    }
+        fn pair_class_hash(self: @ContractState) -> ClassHash {
+            return self.sv_pair_class_hash.read();
+        }
 
-    #[view]
-    fn fee_to_setter_address() -> ContractAddress {
-        return sv_fee_to_setter_address::read();
-    }
+        fn fee_to_setter_address(self: @ContractState) -> ContractAddress {
+            return self.sv_fee_to_setter_address.read();
+        }
 
-    #[view]
-    fn curve_class_hash(curve_class_hash: ClassHash) -> bool {
-        return sv_curve_class_hash::read(curve_class_hash);
-    }
+        fn curve_class_hash(self: @ContractState, curve_class_hash: ClassHash) -> bool {
+            return self.sv_curve_class_hash.read(curve_class_hash);
+        }
 
-    #[view]
-    fn get_pair(
-        token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
-    ) -> ContractAddress {
-        let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
-        return sv_pairs::read((base_address, quote_address, curve));
-    }
+        fn get_pair(
+            self: @ContractState, token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
+        ) -> ContractAddress {
+            let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
+            return self.sv_pairs.read((base_address, quote_address, curve));
+        }
 
-    #[view]
-    fn all_pairs(index: u64) -> ContractAddress {
-        assert(index < all_pairs_length(), 'INVALID_INDEX');
-        return sv_pair_by_index::read(index);
-    }
+        fn all_pairs(self: @ContractState, index: u64) -> ContractAddress {
+            assert(index < all_pairs_length(), 'INVALID_INDEX');
+            return self.sv_pair_by_index.read(index);
+        }
 
-    #[view]
-    fn all_pairs_length() -> u64 {
-        return sv_all_pairs_length::read();
-    }
+        fn all_pairs_length(self: @ContractState) -> u64 {
+            return self.sv_all_pairs_length.read();
+        }
 
-    #[view]
-    fn get_all_pairs() -> Array<Pair> {
-        let mut pairs = ArrayTrait::new();
-        let all_pairs_length = all_pairs_length();
-        let mut index = 0;
-        loop {
-            if index == all_pairs_length {
-                // TODO is this the correct break return val?
-                break 0;
-            }
+        fn get_all_pairs(self: @ContractState) -> Array<Pair> {
+            let mut pairs = ArrayTrait::new();
+            let all_pairs_length = self.sv_all_pairs_length.read();
+            let mut index = 0;
+            loop {
+                if index == all_pairs_length {
+                    // TODO is this the correct break return val?
+                    break 0;
+                }
 
-            let pair_address = sv_pair_by_index::read(index);
-            let base_address = IStarkswapV1PairDispatcher { contract_address: pair_address }.base_token();
-            let quote_address = IStarkswapV1PairDispatcher { contract_address: pair_address }.quote_token();
-            let (curve, _) = IStarkswapV1PairDispatcher { contract_address: pair_address }.curve();
+                let pair_address = self.sv_pair_by_index.read(index);
+                let base_address = IStarkswapV1PairDispatcher { contract_address: pair_address }.base_token();
+                let quote_address = IStarkswapV1PairDispatcher { contract_address: pair_address }.quote_token();
+                let (curve, _) = IStarkswapV1PairDispatcher { contract_address: pair_address }.curve();
 
-            let pair_name = IStarkswapV1PairDispatcher { contract_address: pair_address }.name();
-            let pair_symbol = IStarkswapV1PairDispatcher { contract_address: pair_address }.symbol();
-            let pair_decimals = IStarkswapV1PairDispatcher { contract_address: pair_address }.decimals();
-            let pair_token: Token = Token {
-                address: pair_address,
-                name: pair_name,
-                symbol: pair_symbol,
-                decimals: pair_decimals
+                let pair_name = IERC20Dispatcher { contract_address: pair_address }.name();
+                let pair_symbol = IERC20Dispatcher { contract_address: pair_address }.symbol();
+                let pair_decimals = IERC20Dispatcher { contract_address: pair_address }.decimals();
+                let pair_token: Token = Token {
+                    address: pair_address,
+                    name: pair_name,
+                    symbol: pair_symbol,
+                    decimals: pair_decimals
+                };
+
+                let base_name = IERC20Dispatcher{ contract_address: base_address }.name();
+                let base_symbol = IERC20Dispatcher{ contract_address: base_address }.symbol();
+                let base_decimals = IERC20Dispatcher{ contract_address: base_address }.decimals();
+                let base_token: Token = Token{
+                    address: base_address,
+                    name: base_name,
+                    symbol: base_symbol,
+                    decimals: base_decimals
+                };
+
+                let quote_name = IERC20Dispatcher{ contract_address: quote_address }.name();
+                let quote_symbol = IERC20Dispatcher{ contract_address: quote_address }.symbol();
+                let quote_decimals = IERC20Dispatcher{ contract_address: quote_address }.decimals();
+                let quote_token: Token = Token{
+                    address: quote_address,
+                    name: quote_name,
+                    symbol: quote_symbol,
+                    decimals: quote_decimals
+                };
+
+                pairs.append(Pair {
+                    pair: pair_token,
+                    base: base_token,
+                    quote: quote_token,
+                    curve
+                });
+
+                index = index + 1;
             };
+            return pairs;
+        }
 
-            let base_name = IERC20Dispatcher{ contract_address: base_address }.name();
-            let base_symbol = IERC20Dispatcher{ contract_address: base_address }.symbol();
-            let base_decimals = IERC20Dispatcher{ contract_address: base_address }.decimals();
-            let base_token: Token = Token{
-                address: base_address,
-                name: base_name,
-                symbol: base_symbol,
-                decimals: base_decimals
+        fn create_pair(
+            ref self: ContractState, token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
+        ) -> ContractAddress {
+
+            assert(self.sv_curve_class_hash.read(curve) == true, 'INVALID_CURVE');
+            assert(token_a_address != token_b_address, 'INVALID_ADDRESSES');
+
+            let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
+
+            assert(!base_address.is_zero(), 'ZERO_ADDRESS');
+            assert(token_a_address != token_b_address, 'INVALID_ADDRESSES');
+
+            let existing_pair = self.sv_pairs.read((base_address, quote_address, curve));
+            //TODO: does this still work?
+            assert(existing_pair.is_zero(), 'PAIR_EXISTS');
+
+            let pair_class_hash = self.sv_pair_class_hash.read();
+
+            let mut args = ArrayTrait::new();
+            args.append(contract_address_to_felt252(base_address));
+            args.append(contract_address_to_felt252(quote_address));
+            args.append(class_hash_to_felt252(curve));
+
+            let (pair_address, _) = deploy_syscall(pair_class_hash, 0, args.span(), false).unwrap_syscall();
+
+            self.sv_pairs.write((base_address, quote_address, curve), pair_address);
+            let index = self.sv_all_pairs_length.read();
+            self.sv_pair_by_index.write(index, pair_address);
+            self.sv_all_pairs_length.write(index + 1);
+
+            return pair_address;
+        }
+
+        fn set_fee_to_address(ref self: ContractState, address: ContractAddress) {
+            assert(get_caller_address() == self.sv_fee_to_setter_address.read(), 'FORBIDDEN');
+            self.sv_fee_to_address.write(address);
+        }
+
+        fn set_fee_to_setter_address(ref self: ContractState, address: ContractAddress) {
+            assert(get_caller_address() == self.sv_fee_to_setter_address.read(), 'FORBIDDEN');
+            self.sv_fee_to_setter_address.write(address);
+        }
+
+        fn set_pair_class_hash(ref self: ContractState, pair_class_hash: ClassHash) {
+            assert(get_caller_address() == self.sv_fee_to_setter_address.read(), 'FORBIDDEN');
+            self.sv_pair_class_hash.write(pair_class_hash)
+        }
+
+        fn add_curve_class_hash(ref self: ContractState, curve_class_hash: ClassHash) {
+            assert(get_caller_address() == self.sv_fee_to_setter_address.read(), 'FORBIDDEN');
+            self.sv_curve_class_hash.write(curve_class_hash, true);
+        }
+
+        fn get_balances(self: @ContractState, account: ContractAddress) -> Array<Balance> {
+            let mut balances = ArrayTrait::new();
+            let all_pairs_length = self.sv_all_pairs_length.read();
+            let mut index = 0;
+            loop {
+                if index == all_pairs_length {
+                    // TODO is this the correct break return val?
+                    break 0;
+                }
+
+                let pair_address = self.sv_pair_by_index.read(index);
+                let pair_balance = IERC20Dispatcher { contract_address: pair_address }.balance_of(account);
+
+                let base_address = IStarkswapV1PairDispatcher { contract_address: pair_address }.base_token();
+                let base_balance = IERC20Dispatcher{ contract_address: base_address }.balance_of(account);
+                let quote_address = IStarkswapV1PairDispatcher { contract_address: pair_address }.quote_token();
+                let quote_balance = IERC20Dispatcher{ contract_address: quote_address }.balance_of(account);
+
+                let total_supply = IERC20Dispatcher { contract_address: pair_address }.total_supply();
+                let (base_reserve, quote_reserve, _) = IStarkswapV1PairDispatcher { contract_address: pair_address }.get_reserves();
+
+                balances.append(Balance {
+                    pair_address,
+                    pair_balance,
+                    base_balance,
+                    quote_balance,
+                    total_supply,
+                    base_reserve,
+                    quote_reserve,
+                });
+
+                index = index + 1;
             };
+            return balances;
+        }
 
-            let quote_name = IERC20Dispatcher{ contract_address: quote_address }.name();
-            let quote_symbol = IERC20Dispatcher{ contract_address: quote_address }.symbol();
-            let quote_decimals = IERC20Dispatcher{ contract_address: quote_address }.decimals();
-            let quote_token: Token = Token{
-                address: quote_address,
-                name: quote_name,
-                symbol: quote_symbol,
-                decimals: quote_decimals
-            };
-
-            pairs.append(Pair {
-                pair: pair_token,
-                base: base_token,
-                quote: quote_token,
-                curve
-            });
-
-            index = index + 1;
-        };
-        return pairs;
     }
-
-    #[external]
-    fn create_pair(
-        token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
-    ) -> ContractAddress {
-
-        assert(curve_class_hash(curve) == true, 'INVALID_CURVE');
-        assert(token_a_address != token_b_address, 'INVALID_ADDRESSES');
-
-        let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
-
-        assert(!base_address.is_zero(), 'ZERO_ADDRESS');
-        assert(token_a_address != token_b_address, 'INVALID_ADDRESSES');
-
-        let existing_pair = sv_pairs::read((base_address, quote_address, curve));
-        //TODO: does this still work?
-        assert(existing_pair.is_zero(), 'PAIR_EXISTS');
-
-        let pair_class_hash = sv_pair_class_hash::read();
-
-        let mut args = ArrayTrait::new();
-        args.append(contract_address_to_felt252(base_address));
-        args.append(contract_address_to_felt252(quote_address));
-        args.append(class_hash_to_felt252(curve));
-
-        let (pair_address, _) = deploy_syscall(pair_class_hash, 0, args.span(), false).unwrap_syscall();
-
-        sv_pairs::write((base_address, quote_address, curve), pair_address);
-        let index = sv_all_pairs_length::read();
-        sv_pair_by_index::write(index, pair_address);
-        sv_all_pairs_length::write(index + 1);
-
-        return pair_address;
-    }
-
-    #[external]
-    fn set_fee_to_address(fee_to_address: ContractAddress) {
-        assert(get_caller_address() == fee_to_setter_address(), 'FORBIDDEN');
-        sv_fee_to_address::write(fee_to_address);
-    }
-
-    #[external]
-    fn set_fee_to_setter_address(fee_to_setter_address: ContractAddress) {
-        assert(get_caller_address() == fee_to_setter_address(), 'FORBIDDEN');
-        sv_fee_to_setter_address::write(fee_to_setter_address);
-    }
-
-    #[external]
-    fn set_pair_class_hash(pair_class_hash: ClassHash) {
-        assert(get_caller_address() == fee_to_setter_address(), 'FORBIDDEN');
-        sv_pair_class_hash::write(pair_class_hash)
-    }
-
-    #[external]
-    fn add_curve_class_hash(curve_class_hash: ClassHash) {
-        assert(get_caller_address() == fee_to_setter_address(), 'FORBIDDEN');
-        sv_curve_class_hash::write(curve_class_hash, true);
-    }
-
-    #[view]
-    fn get_balances(account: ContractAddress) -> Array<Balance> {
-        let mut balances = ArrayTrait::new();
-        let all_pairs_length = all_pairs_length();
-        let mut index = 0;
-        loop {
-            if index == all_pairs_length {
-                // TODO is this the correct break return val?
-                break 0;
-            }
-
-            let pair_address = sv_pair_by_index::read(index);
-            let pair_balance = IStarkswapV1PairDispatcher { contract_address: pair_address }.balance_of(account);
-
-            let base_address = IStarkswapV1PairDispatcher { contract_address: pair_address }.base_token();
-            let base_balance = IERC20Dispatcher{ contract_address: base_address }.balance_of(account);
-            let quote_address = IStarkswapV1PairDispatcher { contract_address: pair_address }.quote_token();
-            let quote_balance = IERC20Dispatcher{ contract_address: quote_address }.balance_of(account);
-
-            let total_supply = IStarkswapV1PairDispatcher { contract_address: pair_address }.total_supply();
-            let (base_reserve, quote_reserve, _) = IStarkswapV1PairDispatcher { contract_address: pair_address }.get_reserves();
-
-            balances.append(Balance {
-                pair_address,
-                pair_balance,
-                base_balance,
-                quote_balance,
-                total_supply,
-                base_reserve,
-                quote_reserve,
-            });
-
-            index = index + 1;
-        };
-        return balances;
-    }
-
 }
 

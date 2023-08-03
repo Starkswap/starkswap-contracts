@@ -1,54 +1,50 @@
-#[contract]
+#[starknet::contract]
 mod StarkswapV1Stable {
     use integer::u256_from_felt252;
 
     // Number of iterations to run over Newton's method in order to find the y value that satisfies it
     const STABLE_CURVE_ESTIMATION_ITERATIONS: felt252 = 256;
 
-    #[view]
-    fn name() -> felt252 {
-        return 'x3yy3xk';
+    #[storage]
+    struct Storage {
     }
 
-    #[view]
-    fn get_amount_out(amount_in: u256, reserve_in: u256, reserve_out: u256) -> u256 {
-        let amount_in_minus_fee = amount_in * u256_from_felt252(997) / u256_from_felt252(1000);
+    #[external(v0)]
+    impl StarkswapV1Stable of starkswap_contracts::interfaces::IStarkswapV1Curve::IStarkswapV1Curve<ContractState> {
+        fn name(self: @ContractState) -> felt252 {
+            return 'x3yy3xk';
+        }
 
-        let k = get_k(reserve_in, reserve_out);
-        let adjusted_x: u256 = amount_in_minus_fee + reserve_in;
-        let required_y: u256 = _get_y(k, adjusted_x, reserve_out, STABLE_CURVE_ESTIMATION_ITERATIONS);
+        fn get_amount_out(self: @ContractState, amount_in: u256, reserve_in: u256, reserve_out: u256) -> u256 {
+            let amount_in_minus_fee = amount_in * u256_from_felt252(997) / u256_from_felt252(1000);
 
-        return reserve_out - required_y;
-    }
+            let k = _get_k(reserve_in, reserve_out);
+            let adjusted_x: u256 = amount_in_minus_fee + reserve_in;
+            let required_y: u256 = _get_y(k, adjusted_x, reserve_out, STABLE_CURVE_ESTIMATION_ITERATIONS);
 
-    #[view]
-    fn get_amount_in(
-        amount_out: u256, reserve_in: u256, reserve_out: u256, fees_times_1k: felt252
-    ) -> u256 {
-        let k: u256 = get_k(reserve_in, reserve_out);
+            return reserve_out - required_y;
+        }
 
-        let adjusted_x: u256 = reserve_out - amount_out;
-        let required_y: u256 = _get_y(k, adjusted_x, reserve_in, STABLE_CURVE_ESTIMATION_ITERATIONS);
+        fn get_amount_in(
+            self: @ContractState, amount_out: u256, reserve_in: u256, reserve_out: u256, fees_times_1k: felt252
+        ) -> u256 {
+            let k: u256 = _get_k(reserve_in, reserve_out);
 
-        let amount_in = required_y - reserve_in;
+            let adjusted_x: u256 = reserve_out - amount_out;
+            let required_y: u256 = _get_y(k, adjusted_x, reserve_in, STABLE_CURVE_ESTIMATION_ITERATIONS);
 
-        let r0 = amount_in * u256_from_felt252(1003);
-        let amount_in_plus_fee = r0 / u256_from_felt252(1000);
+            let amount_in = required_y - reserve_in;
 
-        return amount_in_plus_fee;
-    }
+            let r0 = amount_in * u256_from_felt252(1003);
+            let amount_in_plus_fee = r0 / u256_from_felt252(1000);
 
-    #[view]
-    fn get_k(reserve_a: u256, reserve_b: u256) -> u256 {
-        let A = (reserve_a * reserve_a * reserve_a) * reserve_b;
-        let B = (reserve_b * reserve_b * reserve_b) * reserve_a;
-        return A + B;
-    }
+            return amount_in_plus_fee;
+        }
 
-    // Compute derivative of x3y + y3x with regards to y
-    // The derivative is f'(x, y) = x^3 + 3 * y^2 * x
-    fn _derivative_x3y_y3x(x: u256, y: u256) -> u256 {
-        return (x * x * x) + u256_from_felt252(3) * y * y * x;
+        fn get_k(self: @ContractState, reserve_a: u256, reserve_b: u256) -> u256 {
+            _get_k(reserve_a, reserve_b)
+        }
+
     }
 
     // @dev Get the new y based on the stable bonding curve (k=x3y+y3x) using Newton's method:
@@ -65,13 +61,12 @@ mod StarkswapV1Stable {
     // @param y0 A sufficiently close value to the result y, with which to start our search for the correct y
     // @param iterations Number of times to iterate over Newton's method
     // view function for testing
-    #[view]
     fn _get_y(k: u256, x: u256, y0: u256, iterations: felt252) -> u256 {
         if (iterations == 0) {
             return y0;
         }
 
-        let current_k: u256 = get_k(x, y0);
+        let current_k: u256 = _get_k(x, y0);
         // TODO: Should we change this to diff <= 1 ??
         if (current_k == k) {
             return y0;
@@ -108,5 +103,17 @@ mod StarkswapV1Stable {
             let y1 = y0 - dy;
             return _get_y(k, x, y1, iterations - 1);
         }
+    }
+
+    fn _get_k(reserve_a: u256, reserve_b: u256) -> u256 {
+        let A = (reserve_a * reserve_a * reserve_a) * reserve_b;
+        let B = (reserve_b * reserve_b * reserve_b) * reserve_a;
+        return A + B;
+    }
+
+    // Compute derivative of x3y + y3x with regards to y
+    // The derivative is f'(x, y) = x^3 + 3 * y^2 * x
+    fn _derivative_x3y_y3x(x: u256, y: u256) -> u256 {
+        return (x * x * x) + u256_from_felt252(3) * y * y * x;
     }
 }

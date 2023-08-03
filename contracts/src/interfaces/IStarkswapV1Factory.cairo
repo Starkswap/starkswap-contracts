@@ -3,24 +3,24 @@ use starknet::ClassHash;
 use starkswap_contracts::structs::balance::Balance;
 use starkswap_contracts::structs::pair::Pair;
 
-#[abi]
-trait IStarkswapV1Factory {
-    fn fee_to_address() -> ContractAddress;
-    fn pair_class_hash() -> ClassHash;
-    fn fee_to_setter_address() -> ContractAddress;
-    fn curve_class_hash(curve_class_hash: ClassHash) -> bool;
+#[starknet::interface]
+trait IStarkswapV1Factory<TContractState> {
+    fn fee_to_address(self: @TContractState) -> ContractAddress;
+    fn pair_class_hash(self: @TContractState) -> ClassHash;
+    fn fee_to_setter_address(self: @TContractState) -> ContractAddress;
+    fn curve_class_hash(self: @TContractState, curve_class_hash: ClassHash) -> bool;
     fn get_pair(
-        token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
+        self: @TContractState, token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
     ) -> ContractAddress;
-    fn all_pairs(index: u64) -> ContractAddress;
-    fn all_pairs_length() -> u64;
-    fn get_all_pairs() -> Array<Pair>;
+    fn all_pairs(self: @TContractState, index: u64) -> ContractAddress;
+    fn all_pairs_length(self: @TContractState, ) -> u64;
+    fn get_all_pairs(self: @TContractState, ) -> Array<Pair>;
     fn create_pair(
-        token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
+        ref self: TContractState, token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
     ) -> ContractAddress;
-    fn set_fee_to_address(address: ContractAddress);
-    fn set_fee_to_setter_address(address: ContractAddress);
-    fn set_pair_class_hash(pair_class_hash: ClassHash);
-    fn add_curve_class_hash(curve_class_hash: ClassHash);
-    fn get_balances(account: ContractAddress) -> Array<Balance>;
+    fn set_fee_to_address(ref self: TContractState, address: ContractAddress);
+    fn set_fee_to_setter_address(ref self: TContractState, address: ContractAddress);
+    fn set_pair_class_hash(ref self: TContractState, pair_class_hash: ClassHash);
+    fn add_curve_class_hash(ref self: TContractState, curve_class_hash: ClassHash);
+    fn get_balances(self: @TContractState, account: ContractAddress) -> Array<Balance>;
 }

@@ -1,8 +1,8 @@
 use starknet::ContractAddress;
 
-#[abi]
-trait IStarkswapV1Callee {
+#[starknet::interface]
+trait IStarkswapV1Callee<TContractState> {
     fn starkswapV1Call(
-        address: ContractAddress, base_amount: u256, quote_amount: u256, calldata: Array<felt252>
+        self: @TContractState, address: ContractAddress, base_amount: u256, quote_amount: u256, calldata: Array<felt252>
     );
 }
