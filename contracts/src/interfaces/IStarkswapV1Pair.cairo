@@ -4,7 +4,6 @@ use starknet::ContractAddress;
 
 #[starknet::interface]
 trait IStarkswapV1Pair<TContractState> {
-    fn MINIMUM_LIQUIDITY(self: @TContractState) -> u256;
     fn factory(self: @TContractState) -> ContractAddress;
     fn base_token(self: @TContractState) -> ContractAddress;
     fn quote_token(self: @TContractState) -> ContractAddress;

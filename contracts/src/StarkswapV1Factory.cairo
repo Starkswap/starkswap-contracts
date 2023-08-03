@@ -77,7 +77,7 @@ mod StarkswapV1Factory {
         }
 
         fn all_pairs(self: @ContractState, index: u64) -> ContractAddress {
-            assert(index < all_pairs_length(), 'INVALID_INDEX');
+            assert(index < self.sv_all_pairs_length.read(), 'INVALID_INDEX');
             return self.sv_pair_by_index.read(index);
         }
 
