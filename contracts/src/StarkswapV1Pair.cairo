@@ -40,7 +40,8 @@ mod StarkswapV1Pair {
         sv_quote_token_reserve: u256,
         sv_base_token_reserve_cumulative_last: u256,
         sv_quote_token_reserve_cumulative_last: u256,
-        sv_observations: LegacyMap::<usize, Observation>,
+        //TOOD: this should have the Observation struct as 2nd arg, but somehow it doesn't work
+        sv_observations: LegacyMap::<usize, (u64, u256, u256)>,
         sv_observations_len: usize,
         sv_k_last: u256,
         sv_factory_address: ContractAddress,
@@ -84,57 +85,66 @@ mod StarkswapV1Pair {
         self.sv_curve.write(curve_class_hash);
 
         let block_timestamp = get_block_timestamp();
-        self.sv_observations.write(
-            0,
-            Observation {
-                block_timestamp: block_timestamp, cumulative_base_reserve: u256 {
+        self._write_observation(0, Observation {
+                block_timestamp: block_timestamp, 
+                cumulative_base_reserve: u256 {
                     low: 0, high: 0
-                    }, cumulative_quote_reserve: u256 {
+                    }, 
+                cumulative_quote_reserve: u256 {
                     low: 0, high: 0
                 }
-            }
-        );
+            });
         self.sv_observations_len.write(1);
         // TODO: name should be "StarkSwap V1 <Curve>" and Symbol should be "<base>/<quote>"
-        ERC20::constructor(ref self, 'StarkswapV1', 'StarkswapV1', 0, contract_address_const::<0>());
+        let mut erc20_state = ERC20::unsafe_new_contract_state();
+        ERC20::InternalImpl::initializer(ref erc20_state, 'StarkswapV1', 'StarkswapV1');
     }
 
     #[external(v0)]
     impl StarkSwapV1PairERC20Impl of openzeppelin::token::erc20::interface::IERC20<ContractState> {
         fn name(self: @ContractState) -> felt252 {
-            return ERC20::name();
+            let erc20_state = ERC20::unsafe_new_contract_state();
+            return ERC20::ERC20Impl::name(@erc20_state);
         }
 
         fn symbol(self: @ContractState) -> felt252 {
-            return ERC20::symbol();
+            let erc20_state = ERC20::unsafe_new_contract_state();
+            return ERC20::ERC20Impl::symbol(@erc20_state);
         }
 
         fn decimals(self: @ContractState) -> u8 {
-            return ERC20::decimals();
+            let erc20_state = ERC20::unsafe_new_contract_state();
+            return ERC20::ERC20Impl::decimals(@erc20_state);
         }
 
         fn total_supply(self: @ContractState) -> u256 {
-            return ERC20::total_supply();
+            let erc20_state = ERC20::unsafe_new_contract_state();
+            return ERC20::ERC20Impl::total_supply(@erc20_state);
         }
 
         fn balance_of(self: @ContractState, account: ContractAddress) -> u256 {
-            return ERC20::balance_of(account);
+            let erc20_state = ERC20::unsafe_new_contract_state();
+            return ERC20::ERC20Impl::balance_of(@erc20_state, account);
         }
 
         fn allowance(self: @ContractState, owner: ContractAddress, spender: ContractAddress) -> u256 {
-            return ERC20::allowance(owner, spender);
+            let erc20_state = ERC20::unsafe_new_contract_state();
+            return ERC20::ERC20Impl::allowance(@erc20_state, owner, spender);
         }
 
         fn approve(ref self: ContractState, spender: ContractAddress, amount: u256) -> bool {
-            return ERC20::approve(spender, amount);
+            let mut erc20_state = ERC20::unsafe_new_contract_state();
+            return ERC20::ERC20Impl::approve(ref erc20_state, spender, amount);
         }
 
         fn transfer(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
-            return ERC20::transfer(recipient, amount);
+            let mut erc20_state = ERC20::unsafe_new_contract_state();
+            return ERC20::ERC20Impl::transfer(ref erc20_state, recipient, amount);
         }
 
         fn transfer_from(ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool {
-            return ERC20::transfer_from(sender, recipient, amount);
+            let mut erc20_state = ERC20::unsafe_new_contract_state();
+            return ERC20::ERC20Impl::transfer_from(ref erc20_state, sender, recipient, amount);
         }
     }
 
@@ -177,8 +187,8 @@ mod StarkswapV1Pair {
                 if i >= count {
                     break ();
                 }
-                let o: Observation = self.sv_observations.read(i);
-                amounts.append(self.sv_observations.read(i));
+                let o: Observation = self._read_observation(i);
+                amounts.append(o);
                 i = i + 1;
             };
 
@@ -226,7 +236,8 @@ mod StarkswapV1Pair {
 
             //assert(liquidity > u256{ low: 0_u128, high: 0_u128 }, 'StarkswapV1: INSUFFICIENT_LIQUIDITY_MINTED');
             assert(liquidity > u256 { low: 0_u128, high: 0_u128 }, 'StarkswapV1: MINTED < MIN');
-            ERC20::_mint(to, liquidity);
+            let mut erc20_state = ERC20::unsafe_new_contract_state();
+            ERC20::InternalImpl::_mint(ref erc20_state, to, liquidity);
 
             self._update(base_token_balance, quote_token_balance, base_token_reserve, quote_token_reserve);
 
@@ -272,7 +283,8 @@ mod StarkswapV1Pair {
                 quote_token_amount > u256 { low: 0_u128, high: 0_u128 }, 'StarkswapV1: BURNED < MIN'
             );
 
-            ERC20::_burn(this_pair_address, liquidity);
+            let mut erc20_state = ERC20::unsafe_new_contract_state();
+            ERC20::InternalImpl::_burn(ref erc20_state, this_pair_address, liquidity);
             IERC20Dispatcher { contract_address: base_token_address }.transfer(to, base_token_amount);
             IERC20Dispatcher { contract_address: quote_token_address }.transfer(to, quote_token_amount);
 
@@ -455,9 +467,21 @@ mod StarkswapV1Pair {
             return u256_from_felt252(1000);
         }
 
+        fn _write_observation(ref self: ContractState, index: usize, observation: Observation) {
+            self.sv_observations.write(index, (observation.block_timestamp, observation.cumulative_base_reserve, observation.cumulative_quote_reserve));
+        }
+        fn _read_observation(self: @ContractState, index: usize) -> Observation {
+         let (block_timestamp, cumulative_base_reserve, cumulative_quote_reserve) = self.sv_observations.read(index);
+            return Observation{
+                block_timestamp: block_timestamp,
+                cumulative_base_reserve: cumulative_base_reserve,
+                cumulative_quote_reserve: cumulative_quote_reserve
+            };
+        }
+
         fn _last_observation(self: @ContractState) -> Observation {
             let count = self.sv_observations_len.read();
-            let observation = self.sv_observations.read(count - 1);
+            let observation = self._read_observation(count - 1);
 
             return observation;
         }
@@ -491,7 +515,8 @@ mod StarkswapV1Pair {
                         let liquidity = numerator / denominator;
 
                         if (liquidity > u256_from_felt252(0)) {
-                            ERC20::_mint(fee_to, liquidity);
+                            let mut erc20_state = ERC20::unsafe_new_contract_state();
+                            ERC20::InternalImpl::_mint(ref erc20_state, fee_to, liquidity);
                         }
                     }
                 }
@@ -566,7 +591,7 @@ mod StarkswapV1Pair {
             // !(timeElapsed <= periodSize)
             if (time_elapsed > u64_from_felt252(PERIOD_SIZE)) {
                 let observations_len = self.sv_observations_len.read();
-                self.sv_observations.write(
+                self._write_observation(
                     observations_len,
                     Observation {
                         block_timestamp: block_timestamp,
@@ -603,7 +628,8 @@ mod StarkswapV1Pair {
                     low: u256_sqrt(base_token_amount * quote_token_amount), high: 0
                 } - min_liquidity;
 
-                ERC20::_mint(contract_address_const::<42>(), min_liquidity);
+                let mut erc20_state = ERC20::unsafe_new_contract_state();
+                ERC20::InternalImpl::_mint(ref erc20_state, contract_address_const::<42>(), min_liquidity);
                 return liquidity;
             } else {
                 let r1 = (base_token_amount * total_supply) / base_token_reserve;
