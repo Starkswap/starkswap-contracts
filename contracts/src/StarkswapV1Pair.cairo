@@ -12,8 +12,8 @@ mod StarkswapV1Pair {
     use starkswap_contracts::interfaces::IStarkswapV1Callee::IStarkswapV1CalleeDispatcher;
     use starkswap_contracts::utils::decimals::make_18_dec;
     use openzeppelin::token::erc20::interface::IERC20;
-    use openzeppelin::token::erc20::interface::IERC20DispatcherTrait;
     use openzeppelin::token::erc20::interface::IERC20Dispatcher;
+    use openzeppelin::token::erc20::interface::IERC20DispatcherTrait;
     use openzeppelin::token::erc20::erc20::ERC20;
     use starknet::ContractAddress;
     use starknet::ClassHash;
@@ -29,7 +29,7 @@ mod StarkswapV1Pair {
     use traits::Into;
 
     //const LOCKING_ADDRESS: ContractAddress = 42; // ERC20 mint does not allow `0`, so we use `42` instead
-    const PERIOD_SIZE: felt252 = 1800; // Capture oracle reading every 30 minutes
+    const PERIOD_SIZE: u64 = 1800; // Capture oracle reading every 30 minutes
 
     #[storage]
     struct Storage {
@@ -589,7 +589,7 @@ mod StarkswapV1Pair {
 
             // if (timeElapsed > periodSize)
             // !(timeElapsed <= periodSize)
-            if (time_elapsed > u64_from_felt252(PERIOD_SIZE)) {
+            if (time_elapsed > PERIOD_SIZE) {
                 let observations_len = self.sv_observations_len.read();
                 self._write_observation(
                     observations_len,

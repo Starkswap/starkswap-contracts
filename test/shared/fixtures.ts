@@ -77,29 +77,29 @@ export async function factoryFixture(owner: Account): Promise<FactoryFixture> {
     const stableContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Stable")
     const volatileContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Volatile")
     const pairClassHash = await owner.declare(pairContractFactory)
-    // const stableClassHash = await owner.declare(stableContractFactory)
-    // const volatileClassHash = await owner.declare(volatileContractFactory)
-    //
-    // await owner.declare(factoryContractFactory)
-    // const factoryContract = await owner.deploy(factoryContractFactory, {
-    //     setter: owner.address,
-    //     pair_class_hash: pairClassHash,
-    // })
-    //
-    // await owner.invoke(factoryContract, "add_curve", {
-    //     curve_class_hash: stableClassHash,
-    // })
-    //
-    // await owner.invoke(factoryContract, "add_curve", {
-    //     curve_class_hash: volatileClassHash,
-    // })
-    //
-    // return {
-    //     factory: factoryContract,
-    //     pairClassHash: pairClassHash,
-    //     stableClassHash: stableClassHash,
-    //     volatileClassHash: volatileClassHash
-    // }
+     const stableClassHash = await owner.declare(stableContractFactory)
+     const volatileClassHash = await owner.declare(volatileContractFactory)
+    
+     await owner.declare(factoryContractFactory)
+     const factoryContract = await owner.deploy(factoryContractFactory, {
+         setter: owner.address,
+         pair_class_hash: pairClassHash,
+     })
+    
+     await owner.invoke(factoryContract, "add_curve", {
+         curve_class_hash: stableClassHash,
+     })
+    
+     await owner.invoke(factoryContract, "add_curve", {
+         curve_class_hash: volatileClassHash,
+     })
+    
+     return {
+         factory: factoryContract,
+         pairClassHash: pairClassHash,
+         stableClassHash: stableClassHash,
+         volatileClassHash: volatileClassHash
+     }
 }
 
 export async function pairFixture(factoryFixture: FactoryFixture, owner: Account, reverse: boolean=false): Promise<PairFixture> {
