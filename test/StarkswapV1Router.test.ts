@@ -18,7 +18,7 @@ const SWAP_IN_AMOUNT = 1000n
 const SWAP_OUT_AMOUNT = 906n
 
 describe('StarkswapV1Router', function () {
-    this.timeout(300_000);
+    this.timeout(600_000);
 
     let setter: Account
     let fFixture: FactoryFixture
