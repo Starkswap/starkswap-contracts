@@ -22,6 +22,7 @@ from contracts.utils.decimals import make_18_dec, unmake_18_dec
 from contracts.structs.route import Route
 from contracts.structs.observation import Observation
 from openzeppelin.token.erc20.IERC20 import IERC20
+from openzeppelin.upgrades.library import Proxy
 from contracts.interfaces.IStarkswapV1Pair import IStarkswapV1Pair
 from contracts.interfaces.IStarkswapV1Factory import IStarkswapV1Factory
 from contracts.interfaces.IStarkswapV1Curve import IStarkswapV1Curve
@@ -38,20 +39,28 @@ func sv_factory() -> (address: felt) {
 func sv_pair_class_hash() -> (pair_class_hash: felt) {
 }
 
+@storage_var
+func sv_pair_proxy_class_hash() -> (pair_proxy_class_hash: felt) {
+}
+
 //####################################################################
 // Constructor
 //####################################################################
 
-@constructor
-func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    factory_address: felt, pair_class_hash: felt
+@external
+func initializer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    factory_address: felt, pair_proxy_class_hash: felt, pair_class_hash: felt, proxy_admin: felt
 ) {
     assert_not_zero(factory_address);
     sv_factory.write(factory_address);
 
     assert_not_zero(pair_class_hash);
     sv_pair_class_hash.write(pair_class_hash);
+    
+    assert_not_zero(pair_proxy_class_hash);
+    sv_pair_proxy_class_hash.write(pair_proxy_class_hash);
 
+    Proxy.initializer(proxy_admin);
     return ();
 }
 
@@ -71,6 +80,13 @@ func pairClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     return sv_pair_class_hash.read();
 }
 
+@view
+func pairProxyClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    pair_proxy_class_hash: felt
+) {
+    return sv_pair_proxy_class_hash.read();
+}
+
 //####################################################################
 // External functions
 //####################################################################
@@ -82,13 +98,15 @@ func _pair_for{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (factory_address: felt) = sv_factory.read();
     let (pair_class_hash: felt) = sv_pair_class_hash.read();
+    let (pair_proxy_class_hash: felt) = sv_pair_proxy_class_hash.read();
+    let (proxy_admin: felt) = Proxy.get_admin();
 
     let (base_address: felt, quote_address: felt) = _sort_tokens(token_a_address, token_b_address);
     let (pair_address: felt) = get_contract_address{hash_ptr=pedersen_ptr}(
         salt=0,
-        class_hash=pair_class_hash,
-        constructor_calldata_size=3,
-        constructor_calldata=cast(new (base_address, quote_address, curve), felt*),
+        class_hash=pair_proxy_class_hash,
+        constructor_calldata_size=5,
+        constructor_calldata=cast(new (pair_class_hash, base_address, quote_address, curve, proxy_admin), felt*),
         deployer_address=factory_address,
     );
 

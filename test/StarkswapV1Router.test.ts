@@ -51,14 +51,17 @@ describe('StarkswapV1Router', function () {
     }
 
     async function getPairFromFactory(factory: StarknetContract, tokenAAddress: string, tokenBAddress: string, curve: string): Promise<StarknetContract> {
+        const pairProxyContractFactory = await starknet.getContractFactory("PairProxy")
         const pairContractFactory = await starknet.getContractFactory("StarkswapV1Pair")
         const res = await factory.call("getPair", {
             token_a_address: tokenAAddress,
             token_b_address: tokenBAddress,
             curve: curve
         })
-        const pairAddress = fromStringToHex(res.pair_address)
-        return pairContractFactory.getContractAt(pairAddress);
+        const pairAddress = fromStringToHex(res.pair_address);
+        const pairProxyContract = pairProxyContractFactory.getContractAt(pairAddress);
+        pairProxyContract.setImplementation(pairContractFactory);
+        return pairProxyContract;
     }
 
     before(async () => {
@@ -393,6 +396,7 @@ describe('StarkswapV1Router', function () {
                 account: setter.address
             })).to.deep.eq({ balance: toUint256(expectedAmount) })
 
+            console.log("Some 4");
             expect(await tokenB.call( 'balanceOf', {
                 account: setter.address
             })).to.deep.eq({ balance: toUint256(expectedAmount) })
