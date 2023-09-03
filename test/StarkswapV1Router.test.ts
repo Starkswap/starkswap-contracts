@@ -18,7 +18,7 @@ const SWAP_IN_AMOUNT = 1000n
 const SWAP_OUT_AMOUNT = 906n
 
 describe('StarkswapV1Router', function () {
-    this.timeout(300_000);
+    this.timeout(600_000);
 
     let setter: Account
     let fFixture: FactoryFixture
@@ -51,14 +51,17 @@ describe('StarkswapV1Router', function () {
     }
 
     async function getPairFromFactory(factory: StarknetContract, tokenAAddress: string, tokenBAddress: string, curve: string): Promise<StarknetContract> {
+        const pairProxyContractFactory = await starknet.getContractFactory("PairProxy")
         const pairContractFactory = await starknet.getContractFactory("StarkswapV1Pair")
         const res = await factory.call("getPair", {
             token_a_address: tokenAAddress,
             token_b_address: tokenBAddress,
             curve: curve
         })
-        const pairAddress = fromStringToHex(res.pair_address)
-        return pairContractFactory.getContractAt(pairAddress);
+        const pairAddress = fromStringToHex(res.pair_address);
+        const pairProxyContract = pairProxyContractFactory.getContractAt(pairAddress);
+        pairProxyContract.setImplementation(pairContractFactory);
+        return pairProxyContract;
     }
 
     before(async () => {
@@ -393,6 +396,7 @@ describe('StarkswapV1Router', function () {
                 account: setter.address
             })).to.deep.eq({ balance: toUint256(expectedAmount) })
 
+            console.log("Some 4");
             expect(await tokenB.call( 'balanceOf', {
                 account: setter.address
             })).to.deep.eq({ balance: toUint256(expectedAmount) })

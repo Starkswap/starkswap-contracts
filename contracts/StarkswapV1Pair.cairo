@@ -23,6 +23,7 @@ from contracts.utils.uint import assert_uint256_zero, assert_uint256_gt, assert_
 from openzeppelin.token.erc20.library import ERC20
 from openzeppelin.token.erc20.IERC20 import IERC20
 from openzeppelin.security.safemath.library import SafeUint256
+from openzeppelin.upgrades.library import Proxy
 from contracts.utils.decimals import make_18_dec
 from contracts.structs.observation import Observation
 from contracts.interfaces.IStarkswapV1Factory import IStarkswapV1Factory
@@ -110,9 +111,9 @@ func ev_swap(
 func ev_sync(base_token_reserve: Uint256, quote_token_reserve: Uint256) {
 }
 
-@constructor
-func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    base_token_address: felt, quote_token_address: felt, curve_class_hash: felt
+@external
+func initializer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    base_token_address: felt, quote_token_address: felt, curve_class_hash: felt, proxy_admin: felt
 ) {
     let (sender) = get_caller_address();
     sv_factory_address.write(sender);
@@ -127,6 +128,7 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 
     // TODO: name should be "StarkSwap V1 <Curve>" and Symbol should be "<base>/<quote>"
     ERC20.initializer('StarkswapV1', 'StarkswapV1', 18);
+    Proxy.initializer(proxy_admin);
     return ();
 }
 

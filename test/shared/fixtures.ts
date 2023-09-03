@@ -9,6 +9,7 @@ export const INITIAL_SUPPLY = 10000n
 export interface FactoryFixture {
     factory: StarknetContract,
     pairClassHash: string,
+    pairProxyClassHash: string,
     stableClassHash: string,
     volatileClassHash: string
 }
@@ -58,45 +59,60 @@ export async function tokenFixture(owner: Account): Promise<TokenFixture> {
 }
 
 export async function routerFixture(owner: Account, factoryFixture: FactoryFixture): Promise<RouterFixture> {
+    const routerProxyContractFactory: StarknetContractFactory = await starknet.getContractFactory("RouterProxy")
     const routerContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Router")
-    await owner.declare(routerContractFactory);
-    const routerContract = await owner.deploy(routerContractFactory, {
+    const routerClassHash = await owner.declare(routerContractFactory);
+
+    await owner.declare(routerProxyContractFactory);
+    const routerProxyContract = await owner.deploy(routerProxyContractFactory, {
+        implementation_hash: routerClassHash,
         factory_address: factoryFixture.factory.address,
+        pair_proxy_class_hash: factoryFixture.pairProxyClassHash,
         pair_class_hash: factoryFixture.pairClassHash,
-    })
+        proxy_admin: owner.address
+    });
+    routerProxyContract.setImplementation(routerContractFactory);
 
     return {
-        router: routerContract
+        router: routerProxyContract
     }
 
 }
 
 export async function factoryFixture(owner: Account): Promise<FactoryFixture> {
+    const factoryProxyContractFactory: StarknetContractFactory = await starknet.getContractFactory("FactoryProxy")
     const factoryContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Factory")
     const pairContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Pair")
+    const pairProxyContractFactory: StarknetContractFactory = await starknet.getContractFactory("PairProxy")
     const stableContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Stable")
     const volatileContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Volatile")
+    const factoryClassHash = await owner.declare(factoryContractFactory)
+    const pairProxyClassHash = await owner.declare(pairProxyContractFactory)
     const pairClassHash = await owner.declare(pairContractFactory)
     const stableClassHash = await owner.declare(stableContractFactory)
     const volatileClassHash = await owner.declare(volatileContractFactory)
 
-    await owner.declare(factoryContractFactory)
-    const factoryContract = await owner.deploy(factoryContractFactory, {
-        setter: owner.address,
-        pair_class_hash: pairClassHash,
+    await owner.declare(factoryProxyContractFactory)
+    const factoryProxyContract = await owner.deploy(factoryProxyContractFactory, {
+        implementation_hash: factoryClassHash,
+        pair_proxy_contract_class_hash: pairProxyClassHash,
+        pair_contract_class_hash: pairClassHash,
+        fee_to_setter: owner.address,
     })
+    factoryProxyContract.setImplementation(factoryContractFactory);
 
-    await owner.invoke(factoryContract, "addCurve", {
+    await owner.invoke(factoryProxyContract, "addCurve", {
         curve_class_hash: stableClassHash,
     })
 
-    await owner.invoke(factoryContract, "addCurve", {
+    await owner.invoke(factoryProxyContract, "addCurve", {
         curve_class_hash: volatileClassHash,
     })
 
     return {
-        factory: factoryContract,
+        factory: factoryProxyContract,
         pairClassHash: pairClassHash,
+        pairProxyClassHash: pairProxyClassHash,
         stableClassHash: stableClassHash,
         volatileClassHash: volatileClassHash
     }

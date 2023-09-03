@@ -14,6 +14,7 @@ from contracts.structs.pair import Pair
 from contracts.structs.balance import Balance
 from contracts.structs.token import Token
 from openzeppelin.token.erc20.IERC20 import IERC20
+from openzeppelin.upgrades.library import Proxy
 from contracts.interfaces.IStarkswapV1Pair import IStarkswapV1Pair
 
 //####################################################################
@@ -48,20 +49,28 @@ func sv_pairs_count() -> (all_pairs_length: felt) {
 func sv_pair_class_hash() -> (pair_class_hash: felt) {
 }
 
+@storage_var
+func sv_pair_proxy_class_hash() -> (pair_proxy_class_hash: felt) {
+}
+
 //####################################################################
 // Constructor
 //####################################################################
 
-@constructor
-func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    setter: felt, pair_class_hash: felt
+@external
+func initializer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    pair_proxy_class_hash: felt, pair_class_hash: felt, setter: felt
 ) {
     assert_not_zero(setter);
     sv_fee_to_setter.write(setter);
 
+    assert_not_zero(pair_proxy_class_hash);
+    sv_pair_proxy_class_hash.write(pair_proxy_class_hash);
+
     assert_not_zero(pair_class_hash);
     sv_pair_class_hash.write(pair_class_hash);
 
+    Proxy.initializer(setter);
     return ();
 }
 
@@ -74,6 +83,13 @@ func pairClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     pair_class_hash: felt
 ) {
     return sv_pair_class_hash.read();
+}
+
+@view
+func pairProxyClassHash{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    pair_proxy_class_hash: felt
+) {
+    return sv_pair_proxy_class_hash.read();
 }
 
 @view
@@ -330,12 +346,16 @@ func _deploy_starkswap_v1_pair{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
     base_address: felt, quote_address: felt, curve: felt
 ) -> (contract_address: felt) {
     let (pair_class_hash) = sv_pair_class_hash.read();
-    let (contract_address) = deploy(
-        class_hash=pair_class_hash,
+    let (pair_proxy_class_hash) = sv_pair_proxy_class_hash.read();
+    let (fee_to_setter_address) = feeToSetter();
+
+    let (proxy_address) = deploy(
+        class_hash=pair_proxy_class_hash,
         contract_address_salt=0,
-        constructor_calldata_size=3,
-        constructor_calldata=cast(new (base_address, quote_address, curve), felt*),
-        deploy_from_zero=FALSE,
+        constructor_calldata_size=5,
+        constructor_calldata=cast(new (pair_class_hash, base_address, quote_address, curve, fee_to_setter_address), felt*),
+        deploy_from_zero=FALSE
     );
-    return (contract_address,);
+
+    return (proxy_address,);
 }
