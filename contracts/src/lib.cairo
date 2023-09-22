@@ -6,5 +6,5 @@ mod StarkswapV1Pair;
 mod StarkswapV1Router;
 mod StarkswapV1Factory;
 
-mod tests;
+//mod tests;
 

@@ -15,14 +15,15 @@ use starkswap_contracts::interfaces::IStarkswapV1Factory::IStarkswapV1FactoryDis
 use starkswap_contracts::interfaces::IStarkswapV1Factory::IStarkswapV1FactoryDispatcherTrait;
 
 use starknet::contract_address_const;
-use snforge_std::{declare, PreparedContract, deploy, PrintTrait};
+use snforge_std::{ declare, ContractClassTrait };
 
 fn deploy_contract(ref class_hashes: Felt252Dict<felt252>, name: felt252, args: @Array<felt252>) -> ContractAddress {
     let mut class_hash: ClassHash = class_hashes.get(name).try_into().unwrap();
+    let mut contract: Contract;
     if class_hash == ClassHashZeroable::zero() {
         'declaring contract'.print();
-        class_hash = declare(name);
-        class_hashes.insert(name, class_hash.into());
+        contract = declare(name);
+        class_hashes.insert(name, contract.class_hash.into());
     } else {
         'using cached ClassHash'.print()
     }
@@ -32,7 +33,13 @@ fn deploy_contract(ref class_hashes: Felt252Dict<felt252>, name: felt252, args: 
         class_hash: class_hash, constructor_calldata: args
     };
 
-    deploy(prepared).unwrap()
+    contract.deploy(prepared).unwrap()
+
+
+
+    class_hashes.insert(name, contract.class_hash.into());
+
+    contract.deploy(args).unwrap()
 }
 
 fn deploy_token(ref class_hashes: Felt252Dict<felt252>, name: felt252, symbol: felt252, initial_supply: u256, recipient: ContractAddress) -> ContractAddress {
@@ -55,18 +62,18 @@ fn token_fixutre(ref class_hashes: Felt252Dict<felt252>, owner: ContractAddress)
 }
 
 fn factory_fixture(ref class_hashes: Felt252Dict<felt252>, owner: ContractAddress) -> ContractAddress {
-    let stable_curve_hash = declare('StarkswapV1Stable');
-    let volatile_curve_hash = declare('StarkswapV1Volatile');
-    let pair_class_hash = declare('StarkswapV1Pair');
+    let stable_contract = declare('StarkswapV1Stable');
+    let volatile_contract = declare('StarkswapV1Volatile');
+    let pair_contract = declare('StarkswapV1Pair');
 
     let mut args: Array<felt252> = ArrayTrait::new();
     args.append(owner.into());
-    args.append(pair_class_hash.into());
+    args.append(pair_contract.class_hash.into());
     let factory_address = deploy_contract(ref class_hashes, 'StarkswapV1Factory', @args);
 
     let dispatcher = IStarkswapV1FactoryDispatcher { contract_address: factory_address };
-    dispatcher.add_curve_class_hash( curve_class_hash: volatile_curve_hash );
-    dispatcher.add_curve_class_hash( curve_class_hash: stable_curve_hash );
+    dispatcher.add_curve_class_hash( curve_class_hash: volatile_contract.class_hash );
+    dispatcher.add_curve_class_hash( curve_class_hash: stable_contract.class_hash );
 
 
     factory_address

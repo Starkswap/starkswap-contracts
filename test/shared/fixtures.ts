@@ -76,24 +76,30 @@ export async function factoryFixture(owner: Account): Promise<FactoryFixture> {
     const pairContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Pair")
     const stableContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Stable")
     const volatileContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Volatile")
-    const pairClassHash = await owner.declare(pairContractFactory)
-     const stableClassHash = await owner.declare(stableContractFactory)
-     const volatileClassHash = await owner.declare(volatileContractFactory)
-    
+
+    await owner.declare(pairContractFactory)
+    await owner.declare(stableContractFactory)
+    await owner.declare(volatileContractFactory)
+
+    const pairClassHash: string = await pairContractFactory.getClassHash();
+    const stableClassHash: string = await stableContractFactory.getClassHash();
+    const volatileClassHash: string = await volatileContractFactory.getClassHash();
+
+
      await owner.declare(factoryContractFactory)
      const factoryContract = await owner.deploy(factoryContractFactory, {
-         setter: owner.address,
+         fee_to_setter_address: owner.address,
          pair_class_hash: pairClassHash,
      })
-    
-     await owner.invoke(factoryContract, "add_curve", {
+
+     await owner.invoke(factoryContract, "add_curve_class_hash", {
          curve_class_hash: stableClassHash,
      })
-    
-     await owner.invoke(factoryContract, "add_curve", {
+
+     await owner.invoke(factoryContract, "add_curve_class_hash", {
          curve_class_hash: volatileClassHash,
      })
-    
+
      return {
          factory: factoryContract,
          pairClassHash: pairClassHash,
@@ -123,6 +129,7 @@ export async function pairFixture(factoryFixture: FactoryFixture, owner: Account
         curve: factoryFixture.volatileClassHash
     })
 
+    console.log(res);
     const pairAddress = fromStringToHex(res.pair_address)
 
     const pair = pairContractFactory.getContractAt(pairAddress)

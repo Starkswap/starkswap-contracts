@@ -36,12 +36,21 @@ mod StarkswapV1Factory {
         sv_pair_by_index: LegacyMap::<u64, ContractAddress>
     }
 
-    // TODO: workaround for supporting LegacyMap ClassHash keys
+
+    // WORKAROUND for supporting LegacyMap ClassHash keys ****/
     impl LegacyHashClassHash of LegacyHash<ClassHash> {
         fn hash(state: felt252, value: ClassHash) -> felt252 {
             LegacyHash::<felt252>::hash(state, value.into())
         }
     }
+
+    impl LegacyHashClassHashTuple of LegacyHash<(ContractAddress, ContractAddress, ClassHash)> {
+        fn hash(state: felt252, value: (ContractAddress, ContractAddress, ClassHash)) -> felt252 {
+            let (a, b, c) = value;
+            LegacyHash::<(felt252, felt252, felt252)>::hash(state, (a.into(), b.into(), c.into()))
+        }
+    }
+    // END WORKAROUND for supporting LegacyMap ClassHash keys ****/
 
     #[constructor]
     fn constructor(ref self: ContractState, fee_to_setter_address: ContractAddress, pair_class_hash: ClassHash) {
@@ -165,7 +174,7 @@ mod StarkswapV1Factory {
             args.append(contract_address_to_felt252(quote_address));
             args.append(class_hash_to_felt252(curve));
 
-            let (pair_address, _) = deploy_syscall(pair_class_hash, 0, args.span(), false).unwrap_syscall();
+            let (pair_address, _) = deploy_syscall(pair_class_hash, 0, args.span(), false).unwrap();
 
             self.sv_pairs.write((base_address, quote_address, curve), pair_address);
             let index = self.sv_all_pairs_length.read();
@@ -231,6 +240,31 @@ mod StarkswapV1Factory {
             return balances;
         }
 
+    }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        Upgraded: Upgraded
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Upgraded {
+        implementation: ClassHash
+    }
+
+    #[generate_trait]
+    #[external(v0)]
+    impl UpgradeableContract of IUpgradeableContract {
+        fn upgrade(ref self: ContractState, impl_hash: ClassHash) {
+            assert(!impl_hash.is_zero(), 'Class hash cannot be zero');
+            starknet::replace_class_syscall(impl_hash).unwrap();
+            self.emit(Event::Upgraded(Upgraded { implementation: impl_hash }))
+        }
+
+        fn version(self: @ContractState) -> u8 {
+            0
+        }
     }
 }
 

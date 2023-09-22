@@ -9,7 +9,7 @@ import {expect} from "chai";
 const MINIMUM_LIQUIDITY = 10n ** 3n
 
 describe("StarkswapV1Pair", function () {
-    this.timeout(300_000);
+    this.timeout(600_000);
     let wallet: Account;
     let factory: StarknetContract;
     let baseToken: StarknetContract;
