@@ -10,7 +10,7 @@ const config: HardhatUserConfig = {
         network: "integrated-devnet",
         // Instead of using the dockerized Scarb, uses the command you provide here
         // Can be a path or a resolvable command
-        scarbCommand: "scarb",
+        scarbCommand: "scarb"
     },
     networks: {
         integratedDevnet: {

@@ -22,19 +22,26 @@
     "/starknet-artifacts/contracts"
   ],
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "^2.2.2",
-    "@shardlabs/starknet-hardhat-plugin": "^0.8.0-alpha.3",
-    "@types/chai": "^4.3.4",
-    "@types/mocha": "^10.0.1",
-    "@types/node": "^20.4.1",
-    "chai": "^4.3.7",
-    "ethers": "^6.6.2",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.1.6",
-    "starknet": "2.9.0"
+      "@nomiclabs/hardhat-ethers": "^2.0.5",
+      "@shardlabs/starknet-hardhat-plugin": "0.8.0-alpha.5",
+      "@types/chai": "^4.2.22",
+      "@types/elliptic": "^6.4.14",
+      "@types/mocha": "^10.0.0",
+      "@types/node": "^18.0.0",
+      "@typescript-eslint/eslint-plugin": "^5.60.0",
+      "@typescript-eslint/parser": "^5.60.0",
+      "chai": "^4.3.4",
+      "dotenv": "^16.0.1",
+      "eslint": "^8.43.0",
+      "ethers": "^5.4.6",
+      "prettier-eslint-cli": "^7.0.0",
+      "ts-node": "^10.4.0",
+      "typescript": "^5.0.0"
   },
   "dependencies": {
-    "hardhat": "^2.10.2"
+      "axios": "^1.0.0",
+      "hardhat": "2.14.0",
+      "starknet": "^4.22.0"
   },
   "license": "GPL-3.0-only"
 }

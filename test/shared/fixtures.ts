@@ -31,7 +31,7 @@ export interface PairFixture {
 }
 
 export async function tokenFixture(owner: Account): Promise<TokenFixture> {
-    const erc20ContractFactory = await starknet.getContractFactory("../token-contract-artifacts/ERC20")
+    const erc20ContractFactory = await starknet.getContractFactory("openzeppelin_ERC20")
     await owner.declare(erc20ContractFactory);
 
     const tokenA = await owner.deploy(erc20ContractFactory, {
@@ -58,12 +58,15 @@ export async function tokenFixture(owner: Account): Promise<TokenFixture> {
 }
 
 export async function routerFixture(owner: Account, factoryFixture: FactoryFixture): Promise<RouterFixture> {
-    const routerContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Router")
+    const routerContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Router")
+    console.log("declaring router")
     await owner.declare(routerContractFactory);
+    console.log("dploying router")
     const routerContract = await owner.deploy(routerContractFactory, {
         factory_address: factoryFixture.factory.address,
         pair_class_hash: factoryFixture.pairClassHash,
     })
+    console.log("dployed router")
 
     return {
         router: routerContract
@@ -77,9 +80,13 @@ export async function factoryFixture(owner: Account): Promise<FactoryFixture> {
     const stableContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Stable")
     const volatileContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Volatile")
 
+    console.log("Declaring factory contracts")
     await owner.declare(pairContractFactory)
+    console.log("1")
     await owner.declare(stableContractFactory)
+    console.log("2")
     await owner.declare(volatileContractFactory)
+    console.log("Declared factory contracts")
 
     const pairClassHash: string = await pairContractFactory.getClassHash();
     const stableClassHash: string = await stableContractFactory.getClassHash();
