@@ -50,25 +50,47 @@ mod StarkswapV1Pair {
     }
 
     #[event]
-    fn ev_mint(sender: ContractAddress, base_amount: u256, quote_amount: u256) {}
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        Mint: Mint,
+        Burn: Burn,
+        Swap: Swap,
+        Sync: Sync
+    }
 
-    #[event]
-    fn ev_burn(
-        sender: ContractAddress, base_amount: u256, quote_amount: u256, to: ContractAddress
-    ) {}
+    #[derive(Drop, starknet::Event)]
+    struct Mint {
+        #[key]
+        sender: ContractAddress,
+        base_amount: u256,
+        quote_amount: u256
+    }
 
-    #[event]
-    fn ev_swap(
+    #[derive(Drop, starknet::Event)]
+    struct Burn {
+        #[key]
+        sender: ContractAddress,
+        base_amount: u256,
+        quote_amount: u256,
+        to: ContractAddress
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Swap {
+        #[key]
         sender: ContractAddress,
         base_token_amount_in: u256,
         quote_token_amount_in: u256,
         base_token_amount_out: u256,
         quote_token_amount_out: u256,
         to: ContractAddress,
-    ) {}
+    }
 
-    #[event]
-    fn ev_sync(base_token_reserve: u256, quote_token_reserve: u256) {}
+    #[derive(Drop, starknet::Event)]
+    struct Sync {
+        base_token_reserve: u256,
+        quote_token_reserve: u256
+    }
 
     #[constructor]
     fn constructor(
@@ -86,10 +108,10 @@ mod StarkswapV1Pair {
 
         let block_timestamp = get_block_timestamp();
         self._write_observation(0, Observation {
-                block_timestamp: block_timestamp, 
+                block_timestamp: block_timestamp,
                 cumulative_base_reserve: u256 {
                     low: 0, high: 0
-                    }, 
+                    },
                 cumulative_quote_reserve: u256 {
                     low: 0, high: 0
                 }
@@ -248,7 +270,7 @@ mod StarkswapV1Pair {
             }
 
             let sender = get_caller_address();
-            ev_mint(sender, base_token_amount, quote_token_amount);
+            self.emit(Mint {sender: sender, base_amount: base_token_amount, quote_amount: quote_token_amount});
 
             self._unlock();
             return liquidity;
@@ -298,7 +320,12 @@ mod StarkswapV1Pair {
             self._update(base_token_balance, quote_token_balance, base_token_reserve, quote_token_reserve);
 
             let sender = get_caller_address();
-            ev_burn(sender, base_token_amount, quote_token_amount, to);
+            self.emit(Burn {
+                sender: sender,
+                base_amount: base_token_amount,
+                quote_amount: quote_token_amount,
+                to: to
+            });
 
             if (fee_on == true) {
                 self._update_k_last(base_token_balance, quote_token_balance);
@@ -406,7 +433,14 @@ mod StarkswapV1Pair {
 
             self._update(base_token_balance, quote_token_balance, base_amount_out, quote_amount_out);
             let sender = get_caller_address();
-            ev_swap(sender, base_amount_in, quote_amount_in, base_amount_out, quote_amount_out, to);
+            self.emit(Swap {
+                sender: sender,
+                base_token_amount_in: base_amount_in,
+                quote_token_amount_in: quote_amount_in,
+                base_token_amount_out: base_amount_out,
+                quote_token_amount_out: quote_amount_out,
+                to: to,
+            });
 
             self._unlock();
         }
@@ -610,7 +644,10 @@ mod StarkswapV1Pair {
                 self.sv_block_timestamp_last.write(block_timestamp);
             }
 
-            ev_sync(base_token_balance, quote_token_balance);
+            self.emit( Sync {
+                base_token_reserve: base_token_balance,
+                quote_token_reserve: quote_token_balance
+            } );
         }
 
         fn _calculate_liquidity(

@@ -2,7 +2,7 @@ import {starknet} from "hardhat"
 import {shortStringToBigIntUtil} from "@shardlabs/starknet-hardhat-plugin/dist/src/extend-utils"
 import {StarknetContract, StarknetContractFactory} from "hardhat/types/runtime"
 import {Account} from "@shardlabs/starknet-hardhat-plugin/dist/src/account"
-import {expandTo18Decimals, fromStringToHex, orderBySize, toUint256} from "./utils"
+import {expandTo18Decimals, orderBySize} from "./utils"
 
 export const INITIAL_SUPPLY = 10000n
 
@@ -37,18 +37,14 @@ export async function tokenFixture(owner: Account): Promise<TokenFixture> {
     const tokenA = await owner.deploy(erc20ContractFactory, {
         name: shortStringToBigIntUtil("Token A"),
         symbol: shortStringToBigIntUtil("TKA"),
-        decimals: 18,
-        initial_supply: toUint256(expandTo18Decimals(INITIAL_SUPPLY)),
+        initial_supply: expandTo18Decimals(INITIAL_SUPPLY),
         recipient: owner.address,
-        owner: owner.address
     })
     const tokenB = await owner.deploy(erc20ContractFactory, {
         name: shortStringToBigIntUtil("Token B"),
         symbol: shortStringToBigIntUtil("TKB"),
-        decimals: 18,
-        initial_supply: toUint256(expandTo18Decimals(INITIAL_SUPPLY)),
+        initial_supply: expandTo18Decimals(INITIAL_SUPPLY),
         recipient: owner.address,
-        owner: owner.address
     })
 
     return {
@@ -82,9 +78,7 @@ export async function factoryFixture(owner: Account): Promise<FactoryFixture> {
 
     console.log("Declaring factory contracts")
     await owner.declare(pairContractFactory)
-    console.log("1")
     await owner.declare(stableContractFactory)
-    console.log("2")
     await owner.declare(volatileContractFactory)
     console.log("Declared factory contracts")
 
@@ -93,29 +87,29 @@ export async function factoryFixture(owner: Account): Promise<FactoryFixture> {
     const volatileClassHash: string = await volatileContractFactory.getClassHash();
 
 
-     await owner.declare(factoryContractFactory)
-     const factoryContract = await owner.deploy(factoryContractFactory, {
-         fee_to_setter_address: owner.address,
-         pair_class_hash: pairClassHash,
-     })
+    await owner.declare(factoryContractFactory)
+    const factoryContract = await owner.deploy(factoryContractFactory, {
+        fee_to_setter_address: owner.address,
+        pair_class_hash: pairClassHash,
+    })
 
-     await owner.invoke(factoryContract, "add_curve_class_hash", {
-         curve_class_hash: stableClassHash,
-     })
+    await owner.invoke(factoryContract, "add_curve", {
+        curve_class_hash: stableClassHash,
+    })
 
-     await owner.invoke(factoryContract, "add_curve_class_hash", {
-         curve_class_hash: volatileClassHash,
-     })
+    await owner.invoke(factoryContract, "add_curve", {
+        curve_class_hash: volatileClassHash,
+    })
 
-     return {
-         factory: factoryContract,
-         pairClassHash: pairClassHash,
-         stableClassHash: stableClassHash,
-         volatileClassHash: volatileClassHash
-     }
+    return {
+        factory: factoryContract,
+        pairClassHash: pairClassHash,
+        stableClassHash: stableClassHash,
+        volatileClassHash: volatileClassHash
+    }
 }
 
-export async function pairFixture(factoryFixture: FactoryFixture, owner: Account, reverse: boolean=false): Promise<PairFixture> {
+export async function pairFixture(factoryFixture: FactoryFixture, owner: Account, reverse: boolean = false): Promise<PairFixture> {
     const pairContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Pair")
     const factory = factoryFixture.factory
     const tFixture = await tokenFixture(owner)
@@ -130,17 +124,14 @@ export async function pairFixture(factoryFixture: FactoryFixture, owner: Account
         curve: factoryFixture.volatileClassHash
     })
 
-    const res = await factory.call("get_pair", {
+    // @ts-ignore
+    const res: bigint = await factory.call("get_pair", {
         token_a_address: tokenA.address,
         token_b_address: tokenB.address,
         curve: factoryFixture.volatileClassHash
     })
 
-    console.log(res);
-    const pairAddress = fromStringToHex(res.pair_address)
-
-    const pair = pairContractFactory.getContractAt(pairAddress)
-
+    const pair = pairContractFactory.getContractAt(`0x${res.toString(16)}`)
     const orderedTokens = orderBySize(tokenA, tokenB)
 
     return {

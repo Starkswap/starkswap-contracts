@@ -21,6 +21,6 @@ trait IStarkswapV1Factory<TContractState> {
     fn set_fee_to_address(ref self: TContractState, address: ContractAddress);
     fn set_fee_to_setter_address(ref self: TContractState, address: ContractAddress);
     fn set_pair_class_hash(ref self: TContractState, pair_class_hash: ClassHash);
-    fn add_curve_class_hash(ref self: TContractState, curve_class_hash: ClassHash);
+    fn add_curve(ref self: TContractState, curve_class_hash: ClassHash);
     fn get_balances(self: @TContractState, account: ContractAddress) -> Array<Balance>;
 }

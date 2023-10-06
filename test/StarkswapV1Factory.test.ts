@@ -3,6 +3,7 @@ import { starknet } from 'hardhat';
 import {factoryFixture, pairFixture} from './shared/fixtures';
 import {Account} from "@shardlabs/starknet-hardhat-plugin/dist/src/account";
 import {PredeployedAccount} from '@shardlabs/starknet-hardhat-plugin/dist/src/devnet-utils';
+import {stark} from "starknet";
 
 describe('StarkswapV1Factory', function () {
     this.timeout(300_000);
@@ -26,8 +27,8 @@ describe('StarkswapV1Factory', function () {
     it('fee_to, fee_to_setter, all_pairs_length', async () => {
         const fixture = await factoryFixture(setter)
         const factory = fixture.factory
-        expect((await factory.call('fee_to')).address).to.eq(BigInt(0))
-        expect((await factory.call('fee_to_setter')).address).to.eq(BigInt(setter.address))
+        expect((await factory.call('fee_to_address')).address).to.eq(BigInt(0))
+        expect((await factory.call('fee_to_setter_address')).address).to.eq(BigInt(setter.address))
         expect((await factory.call('all_pairs_length')).all_pairs_length).to.eq(BigInt(0))
     })
 
@@ -48,7 +49,7 @@ describe('StarkswapV1Factory', function () {
                 curve: volatileCurve
             });
         } catch (e: any) {
-            expect(e.message).to.contain('StarkswapV1Factory: PAIR_EXISTS')
+            expect(e.message).to.contain(starknet.shortStringToBigInt('PAIR_EXISTS').toString(16))
         }
 
         try {
@@ -58,7 +59,7 @@ describe('StarkswapV1Factory', function () {
                 curve: volatileCurve
             });
         } catch (e: any) {
-            expect(e.message).to.contain('StarkswapV1Factory: PAIR_EXISTS')
+            expect(e.message).to.contain(starknet.shortStringToBigInt('PAIR_EXISTS').toString(16))
         }
 
         expect((await factory.call('get_pair', {
@@ -112,14 +113,14 @@ describe('StarkswapV1Factory', function () {
         const fixture = await factoryFixture(setter)
         const factory = fixture.factory
         try {
-            await account.invoke(factory, 'set_fee_to', {
+            await account.invoke(factory, 'set_fee_to_address', {
                 address: account.address
             });
         } catch (e: any) {
-            expect(e.message).to.contain('StarkswapV1Factory: FORBIDDEN')
+            expect(e.message).to.contain(starknet.shortStringToBigInt('FORBIDDEN').toString(16))
         }
 
-        await setter.invoke(factory, 'set_fee_to', {
+        await setter.invoke(factory, 'set_fee_to_address', {
             address: account.address
         });
         expect((await factory.call('fee_to')).address).to.eq(BigInt(account.address))
@@ -129,24 +130,24 @@ describe('StarkswapV1Factory', function () {
         const fixture = await factoryFixture(setter)
         const factory = fixture.factory
         try {
-            await account.invoke(factory, 'set_fee_to_setter', {
+            await account.invoke(factory, 'set_fee_to_setter_address', {
                 address: account.address
             });
         } catch (e: any) {
-            expect(e.message).to.contain('StarkswapV1Factory: FORBIDDEN')
+            expect(e.message).to.contain(starknet.shortStringToBigInt('FORBIDDEN').toString(16))
         }
 
-        await setter.invoke(factory, 'set_fee_to_setter', {
+        await setter.invoke(factory, 'set_fee_to_setter_address', {
             address: account.address
         });
         expect((await factory.call('feeToSetter')).address).to.eq(BigInt(account.address))
 
         try {
-            await setter.invoke(factory, 'set_fee_to_setter', {
+            await setter.invoke(factory, 'set_fee_to_setter_address', {
                 address: setter.address
             });
         } catch (e: any) {
-            expect(e.message).to.contain('StarkswapV1Factory: FORBIDDEN')
+            expect(e.message).to.contain(starknet.shortStringToBigInt('FORBIDDEN').toString(16))
         }
     })
 

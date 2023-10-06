@@ -199,7 +199,7 @@ mod StarkswapV1Factory {
             self.sv_pair_class_hash.write(pair_class_hash)
         }
 
-        fn add_curve_class_hash(ref self: ContractState, curve_class_hash: ClassHash) {
+        fn add_curve(ref self: ContractState, curve_class_hash: ClassHash) {
             assert(get_caller_address() == self.sv_fee_to_setter_address.read(), 'FORBIDDEN');
             self.sv_curve_class_hash.write(curve_class_hash, true);
         }
