@@ -1,17 +1,22 @@
 import { expect } from 'chai';
 import { starknet } from 'hardhat';
-import {factoryFixture, pairFixture} from './shared/fixtures';
+import {FactoryFixture, factoryFixture, pairFixture} from './shared/fixtures';
 import {Account} from "@shardlabs/starknet-hardhat-plugin/dist/src/account";
 import {PredeployedAccount} from '@shardlabs/starknet-hardhat-plugin/dist/src/devnet-utils';
-import {stark} from "starknet";
+import {StarknetContract} from "hardhat/types/runtime";
 
 describe('StarkswapV1Factory', function () {
-    this.timeout(300_000);
+    this.timeout(600_000);
+    let dumpPath = "StarkswapV1Factory-dump.pkl";
 
     let setter: Account
     let account: Account
+    let fFixture: FactoryFixture;
+    let baseToken: StarknetContract;
+    let quoteToken: StarknetContract;
+    let pair: StarknetContract;
 
-    before(async () => {
+    before(async function (){
         const accounts: PredeployedAccount[] = await starknet.devnet.getPredeployedAccounts()
 
         setter = await starknet.OpenZeppelinAccount.getAccountFromAddress(
@@ -22,18 +27,24 @@ describe('StarkswapV1Factory', function () {
             accounts[1].address,
             accounts[1].private_key
         )
-    })
+
+        fFixture = await factoryFixture(setter)
+        await starknet.devnet.dump(dumpPath);
+    });
+
+    beforeEach(async function () {
+        await starknet.devnet.restart();
+        await starknet.devnet.load(dumpPath);
+    });
 
     it('fee_to, fee_to_setter, all_pairs_length', async () => {
-        const fixture = await factoryFixture(setter)
-        const factory = fixture.factory
-        expect((await factory.call('fee_to_address')).address).to.eq(BigInt(0))
-        expect((await factory.call('fee_to_setter_address')).address).to.eq(BigInt(setter.address))
-        expect((await factory.call('all_pairs_length')).all_pairs_length).to.eq(BigInt(0))
+        const factory = fFixture.factory
+        expect((await factory.call('fee_to_address'))).to.eq(BigInt(0))
+        expect((await factory.call('fee_to_setter_address'))).to.eq(BigInt(setter.address))
+        expect((await factory.call('all_pairs_length'))).to.eq(BigInt(0))
     })
 
     async function createPair(reverse: boolean) {
-        const fFixture = await factoryFixture(setter)
         const fixture = await pairFixture(fFixture, setter, reverse)
         const factory = fixture.factory
         const baseToken = fixture.baseToken
@@ -66,17 +77,17 @@ describe('StarkswapV1Factory', function () {
             token_a_address: baseToken.address,
             token_b_address: quoteToken.address,
             curve: volatileCurve
-        })).pair_address).to.eq(BigInt(pair.address))
+        }))).to.eq(BigInt(pair.address))
 
         expect((await factory.call('get_pair', {
             token_a_address: quoteToken.address,
             token_b_address: baseToken.address,
             curve: volatileCurve
-        })).pair_address).to.eq(BigInt(pair.address))
+        }))).to.eq(BigInt(pair.address))
 
         expect((await factory.call('all_pairs', {
             index: 0
-        })).pair_address).to.eq(BigInt(pair.address))
+        }))).to.eq(BigInt(pair.address))
 
         await setter.invoke(factory, 'create_pair', {
             token_a_address: baseToken.address,
@@ -84,21 +95,23 @@ describe('StarkswapV1Factory', function () {
             curve: stableCurve
         });
 
-        const stable_pair_address = (await factory.call('get_pair', {
+        //@ts-ignore
+        const stable_pair_address:string = (await factory.call('get_pair', {
             token_a_address: baseToken.address,
             token_b_address: quoteToken.address,
             curve: stableCurve
-        })).pair_address
+        }))
 
         expect((await factory.call('all_pairs', {
             index: 1
-        })).pair_address).to.eq(stable_pair_address)
+        }))).to.eq(stable_pair_address)
 
-        expect((await factory.call('all_pairs_length')).all_pairs_length).to.eq(BigInt(2))
-        expect((await pair.call('factory')).address).to.eq(BigInt(factory.address))
-        expect((await pair.call('base_token')).address).to.eq(BigInt(baseToken.address))
-        expect((await pair.call('quote_token')).address).to.eq(BigInt(quoteToken.address))
-        expect((await pair.call('curve')).curve_class_hash).to.eq(BigInt(volatileCurve))
+        expect(await factory.call('all_pairs_length')).to.eq(BigInt(2))
+        expect(await pair.call('factory')).to.eq(BigInt(factory.address))
+        expect(await pair.call('base_token')).to.eq(BigInt(baseToken.address))
+        expect(await pair.call('quote_token')).to.eq(BigInt(quoteToken.address))
+        // @ts-ignore
+        expect((await pair.call(`curve`))[0]).to.eq(BigInt(volatileCurve))
     }
 
     it('create_pair', async () => {
@@ -110,8 +123,7 @@ describe('StarkswapV1Factory', function () {
     })
 
     it('set_fee_to', async () => {
-        const fixture = await factoryFixture(setter)
-        const factory = fixture.factory
+        const factory = fFixture.factory
         try {
             await account.invoke(factory, 'set_fee_to_address', {
                 address: account.address
@@ -123,12 +135,11 @@ describe('StarkswapV1Factory', function () {
         await setter.invoke(factory, 'set_fee_to_address', {
             address: account.address
         });
-        expect((await factory.call('fee_to')).address).to.eq(BigInt(account.address))
+        expect((await factory.call('fee_to_address'))).to.eq(BigInt(account.address))
     })
 
     it('set_fee_to_setter', async () => {
-        const fixture = await factoryFixture(setter)
-        const factory = fixture.factory
+        const factory = fFixture.factory
         try {
             await account.invoke(factory, 'set_fee_to_setter_address', {
                 address: account.address
@@ -140,7 +151,7 @@ describe('StarkswapV1Factory', function () {
         await setter.invoke(factory, 'set_fee_to_setter_address', {
             address: account.address
         });
-        expect((await factory.call('feeToSetter')).address).to.eq(BigInt(account.address))
+        expect((await factory.call('fee_to_setter_address'))).to.eq(BigInt(account.address))
 
         try {
             await setter.invoke(factory, 'set_fee_to_setter_address', {

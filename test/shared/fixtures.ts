@@ -34,6 +34,7 @@ export async function tokenFixture(owner: Account): Promise<TokenFixture> {
     const erc20ContractFactory = await starknet.getContractFactory("openzeppelin_ERC20")
     await owner.declare(erc20ContractFactory);
 
+
     const tokenA = await owner.deploy(erc20ContractFactory, {
         name: shortStringToBigIntUtil("Token A"),
         symbol: shortStringToBigIntUtil("TKA"),

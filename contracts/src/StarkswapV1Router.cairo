@@ -175,7 +175,7 @@ mod StarkswapV1Router {
         ) -> (u256, u256) {
             _assert_valid_deadline(deadline);
 
-            let pair_address = _pair_for(token_a_address, token_b_address, curve);
+            let pair_address = _pair_for(self, token_a_address, token_b_address, curve);
             assert(!pair_address.is_zero(), 'NONEXISTENT_PAIR');
 
             let caller_address = get_caller_address();
@@ -405,7 +405,7 @@ mod StarkswapV1Router {
 
         fn _swap(self: @ContractState, amounts: Span<u256>, routes: Span<Route>, to: ContractAddress) {
             let route: Route = *routes[0];
-            let pair_address = _pair_for(route.input, route.output, route.curve);
+            let pair_address = _pair_for(self, route.input, route.output, route.curve);
             let caller_address = get_caller_address();
 
             IERC20Dispatcher {
@@ -428,7 +428,7 @@ mod StarkswapV1Router {
                 );
 
                 let mut to_address = to;
-                let pair_address = _pair_for(route.input, route.output, route.curve);
+                let pair_address = _pair_for(self, route.input, route.output, route.curve);
 
                 if index < routes.len() - 1 {
                     to_address = pair_address;
@@ -529,7 +529,7 @@ mod StarkswapV1Router {
     }
 
     fn _pair_for(
-        token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
+        self: @ContractState, token_a_address: ContractAddress, token_b_address: ContractAddress, curve: ClassHash
     ) -> ContractAddress {
         //TODO: Can this be replicated in cairo 1 or do we need to simply make a factory call?
         // let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
@@ -540,7 +540,11 @@ mod StarkswapV1Router {
         //     constructor_calldata=(base_address, quote_address, curve),
         //     deployer_address=sv_factory.read(),
         // );
-        return contract_address_try_from_felt252(0).unwrap();
+
+        let factory_address: ContractAddress = self.sv_factory_address.read();
+        return IStarkswapV1FactoryDispatcher {
+            contract_address: factory_address
+        }.get_pair(token_a_address, token_b_address, curve);
     }
 
     fn _assert_valid_deadline(deadline: felt252) {
