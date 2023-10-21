@@ -58,12 +58,12 @@ export async function routerFixture(owner: Account, factoryFixture: FactoryFixtu
     const routerContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Router")
     console.log("declaring router")
     await owner.declare(routerContractFactory);
-    console.log("dploying router")
+    console.log("deploying router")
     const routerContract = await owner.deploy(routerContractFactory, {
         factory_address: factoryFixture.factory.address,
         pair_class_hash: factoryFixture.pairClassHash,
     })
-    console.log("dployed router")
+    console.log("deployed router")
 
     return {
         router: routerContract

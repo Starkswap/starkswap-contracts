@@ -9,7 +9,7 @@ import {
     TokenFixture,
     tokenFixture
 } from "./shared/fixtures";
-import {expandTo18Decimals, fromStringToHex, toUint256} from "./shared/utils";
+import {expandTo18Decimals} from "./shared/utils";
 import {Account} from "@shardlabs/starknet-hardhat-plugin/dist/src/account";
 import {StarknetContract} from "@shardlabs/starknet-hardhat-plugin/dist/src/types";
 import {PredeployedAccount} from '@shardlabs/starknet-hardhat-plugin/dist/src/devnet-utils';
@@ -50,14 +50,15 @@ describe('StarkswapV1Router', function () {
             amount_a_min: 0n,
             amount_b_min: 0n,
             to: setter.address,
-            deadline: 99999999999999999999999n
+            deadline: 99999999999999n
         })
+
     }
 
     async function getPairFromFactory(factory: StarknetContract, tokenAAddress: string, tokenBAddress: string, curve: string): Promise<StarknetContract> {
         const pairContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Pair")
         //@ts-ignore
-        const pairAddress:bigint = await factory.call("get_pair", {
+        const pairAddress: bigint = await factory.call("get_pair", {
             token_a_address: tokenAAddress,
             token_b_address: tokenBAddress,
             curve: curve
@@ -67,6 +68,10 @@ describe('StarkswapV1Router', function () {
     }
 
     before(async () => {
+
+        console.log(`0x7533325f737562204f766572666c6f77 => ${starknet.bigIntToShortString(BigInt("0x7533325f737562204f766572666c6f77"))}`)
+        console.log(`0x537461726b7377617056313a204b => ${starknet.bigIntToShortString(BigInt("0x537461726b7377617056313a204b"))}`)
+
         const accounts: PredeployedAccount[] = await starknet.devnet.getPredeployedAccounts()
 
         setter = await starknet.OpenZeppelinAccount.getAccountFromAddress(
@@ -74,9 +79,20 @@ describe('StarkswapV1Router', function () {
             accounts[0].private_key
         )
 
+
         fFixture = await factoryFixture(setter)
         rFixture = await routerFixture(setter, fFixture)
         tFixture = await tokenFixture(setter)
+
+        console.log(JSON.stringify({
+            factoryAddress: fFixture.factory.address,
+            pairClassHash: fFixture.pairClassHash,
+            volatileClassHash: fFixture.volatileClassHash,
+            stableClassHash: fFixture.stableClassHash,
+            routerAddress: rFixture.router.address,
+            tokenAAddress: tFixture.tokenA.address,
+            tokenBAddress: tFixture.tokenB.address,
+        }));
 
         await starknet.devnet.dump(dumpPath);
 
@@ -287,7 +303,7 @@ describe('StarkswapV1Router', function () {
                 routes: [
                     {input: tokenA.address, output: tokenB.address, curve: volatileClassHash}
                 ]
-            })).to.deep.eq({amounts_len: 2n, amounts: [2n, 1n]})
+            })).to.deep.eq([2n, 1n])
 
         })
 
@@ -327,7 +343,7 @@ describe('StarkswapV1Router', function () {
                 routes: [
                     {input: tokenA.address, output: tokenB.address, curve: volatileClassHash}
                 ]
-            })).to.deep.eq({amounts_len: 2n, amounts: [2n, 1n]})
+            })).to.deep.eq([2n, 1n])
 
         })
 
@@ -351,16 +367,15 @@ describe('StarkswapV1Router', function () {
 
             expect(await pair.call('balance_of', {
                 account: setter.address
-            })).to.deep.eq({balance: 9000n})
+            })).to.deep.eq(9000n)
 
             expect(await tokenA.call('balance_of', {
                 account: setter.address
-            })).to.deep.eq({balance: expandTo18Decimals(INITIAL_SUPPLY) - 10000n})
+            })).to.deep.eq(expandTo18Decimals(INITIAL_SUPPLY) - 10000n)
 
             expect(await tokenB.call('balance_of', {
                 account: setter.address
-            })).to.deep.eq({balance: expandTo18Decimals(INITIAL_SUPPLY) - 10000n})
-
+            })).to.deep.eq(expandTo18Decimals(INITIAL_SUPPLY) - 10000n)
         })
 
         it('remove_liquidity', async () => {
@@ -387,17 +402,17 @@ describe('StarkswapV1Router', function () {
                 amount_a_min: 0n,
                 amount_b_min: 0n,
                 to: setter.address,
-                deadline: 99999999999999999999999n
+                deadline: 99999999999999n
             })
 
             const expectedAmount = expandTo18Decimals(INITIAL_SUPPLY) - TRANSFER_AMOUNT + SWAP_IN_AMOUNT
             expect(await tokenA.call('balance_of', {
                 account: setter.address
-            })).to.deep.eq({balance: expectedAmount})
+            })).to.deep.eq(expectedAmount)
 
             expect(await tokenB.call('balance_of', {
                 account: setter.address
-            })).to.deep.eq({balance: expectedAmount})
+            })).to.deep.eq(expectedAmount)
 
         })
 
@@ -427,7 +442,7 @@ describe('StarkswapV1Router', function () {
                         {input: tokenA.address, output: 1n, curve: volatileClassHash}
                     ],
                     to: setter.address,
-                    deadline: 99999999999999999999999n
+                    deadline: 99999999999999n
                 })
             } catch (e: any) {
                 expect(e.message).to.contain(BigInt(shortStringToBigIntUtil('INVALID_PATH')).toString(16))
@@ -440,12 +455,12 @@ describe('StarkswapV1Router', function () {
                     {input: tokenA.address, output: tokenB.address, curve: volatileClassHash}
                 ],
                 to: setter.address,
-                deadline: 99999999999999999999999n
+                deadline: 99999999999999n
             })
 
             expect(await tokenB.call('balance_of', {
                 account: setter.address
-            })).to.deep.eq({balance: expandTo18Decimals(INITIAL_SUPPLY) - TRANSFER_AMOUNT + SWAP_OUT_AMOUNT})
+            })).to.deep.eq(expandTo18Decimals(INITIAL_SUPPLY) - TRANSFER_AMOUNT + SWAP_OUT_AMOUNT)
 
         })
 
@@ -471,7 +486,7 @@ describe('StarkswapV1Router', function () {
                         {input: tokenA.address, output: 1n, curve: volatileClassHash}
                     ],
                     to: setter.address,
-                    deadline: 99999999999999999999999n
+                    deadline: 99999999999999n
                 })
             } catch (e: any) {
                 expect(e.message).to.contain(BigInt(shortStringToBigIntUtil('INVALID_PATH')).toString(16))
@@ -484,12 +499,12 @@ describe('StarkswapV1Router', function () {
                     {input: tokenA.address, output: tokenB.address, curve: volatileClassHash}
                 ],
                 to: setter.address,
-                deadline: 99999999999999999999999n
+                deadline: 99999999999999n
             })
 
             expect(await tokenB.call('balance_of', {
                 account: setter.address
-            })).to.deep.eq({balance: expandTo18Decimals(INITIAL_SUPPLY) - TRANSFER_AMOUNT + SWAP_OUT_AMOUNT})
+            })).to.deep.eq(expandTo18Decimals(INITIAL_SUPPLY) - TRANSFER_AMOUNT + SWAP_OUT_AMOUNT)
 
         })
     })

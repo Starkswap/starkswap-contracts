@@ -16,7 +16,7 @@ trait IStarkswapV1Router<TContractState> {
         amount_a_min: u256,
         amount_b_min: u256,
         to: ContractAddress,
-        deadline: felt252,
+        deadline: u64,
     ) -> (u256, u256, u256);
     fn remove_liquidity(
         self: @TContractState,
@@ -27,13 +27,13 @@ trait IStarkswapV1Router<TContractState> {
         amount_a_min: u256,
         amount_b_min: u256,
         to: ContractAddress,
-        deadline: felt252,
+        deadline: u64,
     ) -> (u256, u256);
     fn swap_exact_tokens_for_tokens(
-        self: @TContractState, amount_in: u256, amount_out_min: u256, routes: Array<Route>, to: ContractAddress, deadline: felt252, 
+        self: @TContractState, amount_in: u256, amount_out_min: u256, routes: Array<Route>, to: ContractAddress, deadline: u64, 
     ) -> Array<u256>;
     fn swap_tokens_for_exact_tokens(
-        self: @TContractState, amount_out: u256, amount_in_max: u256, routes: Array<Route>, to: ContractAddress, deadline: felt252, 
+        self: @TContractState, amount_out: u256, amount_in_max: u256, routes: Array<Route>, to: ContractAddress, deadline: u64, 
     ) -> Array<u256>;
     fn quote(self: @TContractState, amount_a: u256, reserve_a: u256, reserve_b: u256, ) -> u256;
     fn oracle_quote(

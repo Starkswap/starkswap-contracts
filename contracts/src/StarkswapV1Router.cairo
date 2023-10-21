@@ -138,7 +138,7 @@ mod StarkswapV1Router {
             amount_a_min: u256,
             amount_b_min: u256,
             to: ContractAddress,
-            deadline: felt252,
+            deadline: u64,
         ) -> (u256, u256, u256) {
             _assert_valid_deadline(deadline);
 
@@ -158,7 +158,7 @@ mod StarkswapV1Router {
             IERC20Dispatcher {
                 contract_address: token_b_address
             }.transfer_from(caller_address, pair_address, amount_b);
-            let liquidity = IStarkswapV1PairDispatcher { contract_address: token_b_address }.mint(to);
+            let liquidity = IStarkswapV1PairDispatcher { contract_address: pair_address }.mint(to);
             return (amount_a, amount_b, liquidity);
         }
 
@@ -171,7 +171,7 @@ mod StarkswapV1Router {
             amount_a_min: u256,
             amount_b_min: u256,
             to: ContractAddress,
-            deadline: felt252,
+            deadline: u64,
         ) -> (u256, u256) {
             _assert_valid_deadline(deadline);
 
@@ -183,7 +183,7 @@ mod StarkswapV1Router {
                 contract_address: pair_address
             }.transfer_from(caller_address, pair_address, liquidity);
             let (amount_0, amount_1) = IStarkswapV1PairDispatcher {
-                contract_address: token_b_address
+                contract_address: pair_address
             }.burn(to);
             let (base_address, quote_address) = _sort_tokens(token_a_address, token_b_address);
             let (amount_a, amount_b) = _sort_amounts(token_a_address, base_address, amount_0, amount_1);
@@ -200,7 +200,7 @@ mod StarkswapV1Router {
             amount_out_min: u256,
             routes: Array<Route>,
             to: ContractAddress,
-            deadline: felt252,
+            deadline: u64,
         ) -> Array<u256> {
             _assert_valid_deadline(deadline);
 
@@ -218,7 +218,7 @@ mod StarkswapV1Router {
             amount_in_max: u256,
             routes: Array<Route>,
             to: ContractAddress,
-            deadline: felt252,
+            deadline: u64,
         ) -> Array<u256> {
             _assert_valid_deadline(deadline);
 
@@ -321,8 +321,7 @@ mod StarkswapV1Router {
             let mut index = 0;
             loop {
                 if index == routes.len() {
-                    // TODO is this the correct break return val?
-                    break 0;
+                    break;
                 }
                 let route: Route = *routes[index];
                 let (reserve_in, reserve_out) = self._get_reserves(route.input, route.output, route.curve);
@@ -345,8 +344,7 @@ mod StarkswapV1Router {
             let mut index = 0;
             loop {
                 if index == routes.len() {
-                    // TODO is this the correct break return val?
-                    break 0;
+                    break;
                 }
                 let route: Route = *routes[index];
                 let (reserve_in, reserve_out) = self._get_reserves(route.input, route.output, route.curve);
@@ -362,10 +360,12 @@ mod StarkswapV1Router {
             let mut rev_amounts = ArrayTrait::new();
             index = amounts.len() - 1;
             loop {
-                if index < 0 {
-                    break 0;
+                if index >= 0 {
+                    rev_amounts.append(*amounts[index]);
                 }
-                rev_amounts.append(*amounts[index]);
+                if index <= 0 {
+                    break;
+                }
                 index = index - 1;
             };
             return rev_amounts;
@@ -384,6 +384,7 @@ mod StarkswapV1Router {
             amount_b_min: u256,
         ) -> (u256, u256, ContractAddress) {
             let pair_address = self._get_or_create_pair(token_a_address, token_b_address, curve);
+
 
             let (reserve_a, reserve_b) = self._get_reserves(token_a_address, token_b_address, curve);
             if reserve_a + reserve_b == u256_from_felt252(0) {
@@ -416,23 +417,21 @@ mod StarkswapV1Router {
             loop {
                 if index == routes.len() {
                     // TODO is this the correct break return val?
-                    break 0;
+                    break;
                 }
 
                 let route: Route = *routes[index];
-                let amount: u256 = *amounts[index];
-
                 let (base_token, _) = _sort_tokens(route.input, route.output);
                 let (base_out, quote_out) = _sort_amounts(
-                    route.input, base_token, u256_from_felt252(0), amount
+                    route.input, base_token, u256_from_felt252(0), *amounts[index]
                 );
 
                 let mut to_address = to;
-                let pair_address = _pair_for(self, route.input, route.output, route.curve);
-
                 if index < routes.len() - 1 {
-                    to_address = pair_address;
+                    let r: Route = *routes[index+1];
+                    to_address = _pair_for(self, r.input, r.output, r.curve);
                 }
+                let pair_address = _pair_for(self, route.input, route.output, route.curve);
 
                 IStarkswapV1PairDispatcher {
                     contract_address: pair_address
@@ -547,9 +546,9 @@ mod StarkswapV1Router {
         }.get_pair(token_a_address, token_b_address, curve);
     }
 
-    fn _assert_valid_deadline(deadline: felt252) {
-        let block_timestamp = get_block_timestamp();
-        assert(block_timestamp < u64_from_felt252(deadline), 'EXPIRED');
+    fn _assert_valid_deadline(deadline: u64) {
+        let block_timestamp= get_block_timestamp();
+        assert(block_timestamp <= deadline, 'EXPIRED');
     }
 
     //#[event]
