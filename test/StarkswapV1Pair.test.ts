@@ -18,6 +18,8 @@ describe("StarkswapV1Pair", function () {
     let dumpPath = "dump.pkl"; //Path.join(tmpdir(), `devnet-dump-${new Date().getTime()}`);
 
     before(async function () {
+        await starknet.devnet.restart();
+
         const accounts: PredeployedAccount[] = await starknet.devnet.getPredeployedAccounts()
         wallet = await starknet.OpenZeppelinAccount.getAccountFromAddress(
             accounts[0].address,

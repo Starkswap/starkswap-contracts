@@ -1,9 +1,8 @@
-import { expect } from 'chai';
-import { starknet } from 'hardhat';
+import {expect} from 'chai';
+import {starknet} from 'hardhat';
 import {FactoryFixture, factoryFixture, pairFixture} from './shared/fixtures';
 import {Account} from "@shardlabs/starknet-hardhat-plugin/dist/src/account";
 import {PredeployedAccount} from '@shardlabs/starknet-hardhat-plugin/dist/src/devnet-utils';
-import {StarknetContract} from "hardhat/types/runtime";
 
 describe('StarkswapV1Factory', function () {
     this.timeout(600_000);
@@ -12,11 +11,10 @@ describe('StarkswapV1Factory', function () {
     let setter: Account
     let account: Account
     let fFixture: FactoryFixture;
-    let baseToken: StarknetContract;
-    let quoteToken: StarknetContract;
-    let pair: StarknetContract;
 
     before(async function (){
+        await starknet.devnet.restart();
+
         const accounts: PredeployedAccount[] = await starknet.devnet.getPredeployedAccounts()
 
         setter = await starknet.OpenZeppelinAccount.getAccountFromAddress(
