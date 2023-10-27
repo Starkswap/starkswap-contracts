@@ -1,4 +1,6 @@
+target
 node_modules
-cache
 starknet-artifacts
+cache
+.DS_Store
 .idea

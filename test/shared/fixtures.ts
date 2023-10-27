@@ -2,14 +2,13 @@ import {starknet} from "hardhat"
 import {shortStringToBigIntUtil} from "@shardlabs/starknet-hardhat-plugin/dist/src/extend-utils"
 import {StarknetContract, StarknetContractFactory} from "hardhat/types/runtime"
 import {Account} from "@shardlabs/starknet-hardhat-plugin/dist/src/account"
-import {expandTo18Decimals, fromStringToHex, orderBySize, toUint256} from "./utils"
+import {expandTo18Decimals, orderBySize} from "./utils"
 
 export const INITIAL_SUPPLY = 10000n
 
 export interface FactoryFixture {
     factory: StarknetContract,
     pairClassHash: string,
-    pairProxyClassHash: string,
     stableClassHash: string,
     volatileClassHash: string
 }
@@ -32,24 +31,21 @@ export interface PairFixture {
 }
 
 export async function tokenFixture(owner: Account): Promise<TokenFixture> {
-    const erc20ContractFactory = await starknet.getContractFactory("../token-contract-artifacts/ERC20")
+    const erc20ContractFactory = await starknet.getContractFactory("openzeppelin_ERC20")
     await owner.declare(erc20ContractFactory);
+
 
     const tokenA = await owner.deploy(erc20ContractFactory, {
         name: shortStringToBigIntUtil("Token A"),
         symbol: shortStringToBigIntUtil("TKA"),
-        decimals: 18,
-        initial_supply: toUint256(expandTo18Decimals(INITIAL_SUPPLY)),
+        initial_supply: expandTo18Decimals(INITIAL_SUPPLY),
         recipient: owner.address,
-        owner: owner.address
     })
     const tokenB = await owner.deploy(erc20ContractFactory, {
         name: shortStringToBigIntUtil("Token B"),
         symbol: shortStringToBigIntUtil("TKB"),
-        decimals: 18,
-        initial_supply: toUint256(expandTo18Decimals(INITIAL_SUPPLY)),
+        initial_supply: expandTo18Decimals(INITIAL_SUPPLY),
         recipient: owner.address,
-        owner: owner.address
     })
 
     return {
@@ -59,67 +55,63 @@ export async function tokenFixture(owner: Account): Promise<TokenFixture> {
 }
 
 export async function routerFixture(owner: Account, factoryFixture: FactoryFixture): Promise<RouterFixture> {
-    const routerProxyContractFactory: StarknetContractFactory = await starknet.getContractFactory("RouterProxy")
-    const routerContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Router")
-    const routerClassHash = await owner.declare(routerContractFactory);
-
-    await owner.declare(routerProxyContractFactory);
-    const routerProxyContract = await owner.deploy(routerProxyContractFactory, {
-        implementation_hash: routerClassHash,
+    const routerContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Router")
+    console.log("declaring router")
+    await owner.declare(routerContractFactory);
+    console.log("deploying router")
+    const routerContract = await owner.deploy(routerContractFactory, {
         factory_address: factoryFixture.factory.address,
-        pair_proxy_class_hash: factoryFixture.pairProxyClassHash,
         pair_class_hash: factoryFixture.pairClassHash,
-        proxy_admin: owner.address
-    });
-    routerProxyContract.setImplementation(routerContractFactory);
+    })
+    console.log("deployed router")
 
     return {
-        router: routerProxyContract
+        router: routerContract
     }
 
 }
 
 export async function factoryFixture(owner: Account): Promise<FactoryFixture> {
-    const factoryProxyContractFactory: StarknetContractFactory = await starknet.getContractFactory("FactoryProxy")
-    const factoryContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Factory")
-    const pairContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Pair")
-    const pairProxyContractFactory: StarknetContractFactory = await starknet.getContractFactory("PairProxy")
-    const stableContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Stable")
-    const volatileContractFactory: StarknetContractFactory = await starknet.getContractFactory("StarkswapV1Volatile")
-    const factoryClassHash = await owner.declare(factoryContractFactory)
-    const pairProxyClassHash = await owner.declare(pairProxyContractFactory)
-    const pairClassHash = await owner.declare(pairContractFactory)
-    const stableClassHash = await owner.declare(stableContractFactory)
-    const volatileClassHash = await owner.declare(volatileContractFactory)
+    const factoryContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Factory")
+    const pairContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Pair")
+    const stableContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Stable")
+    const volatileContractFactory: StarknetContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Volatile")
 
-    await owner.declare(factoryProxyContractFactory)
-    const factoryProxyContract = await owner.deploy(factoryProxyContractFactory, {
-        implementation_hash: factoryClassHash,
-        pair_proxy_contract_class_hash: pairProxyClassHash,
-        pair_contract_class_hash: pairClassHash,
-        fee_to_setter: owner.address,
+    console.log("Declaring factory contracts")
+    await owner.declare(pairContractFactory)
+    await owner.declare(stableContractFactory)
+    await owner.declare(volatileContractFactory)
+    console.log("Declared factory contracts")
+
+    const pairClassHash: string = await pairContractFactory.getClassHash();
+    const stableClassHash: string = await stableContractFactory.getClassHash();
+    const volatileClassHash: string = await volatileContractFactory.getClassHash();
+
+
+    await owner.declare(factoryContractFactory)
+    const factoryContract = await owner.deploy(factoryContractFactory, {
+        fee_to_setter_address: owner.address,
+        pair_class_hash: pairClassHash,
     })
-    factoryProxyContract.setImplementation(factoryContractFactory);
 
-    await owner.invoke(factoryProxyContract, "addCurve", {
+    await owner.invoke(factoryContract, "add_curve", {
         curve_class_hash: stableClassHash,
     })
 
-    await owner.invoke(factoryProxyContract, "addCurve", {
+    await owner.invoke(factoryContract, "add_curve", {
         curve_class_hash: volatileClassHash,
     })
 
     return {
-        factory: factoryProxyContract,
+        factory: factoryContract,
         pairClassHash: pairClassHash,
-        pairProxyClassHash: pairProxyClassHash,
         stableClassHash: stableClassHash,
         volatileClassHash: volatileClassHash
     }
 }
 
-export async function pairFixture(factoryFixture: FactoryFixture, owner: Account, reverse: boolean=false): Promise<PairFixture> {
-    const pairContractFactory = await starknet.getContractFactory("StarkswapV1Pair")
+export async function pairFixture(factoryFixture: FactoryFixture, owner: Account, reverse: boolean = false): Promise<PairFixture> {
+    const pairContractFactory = await starknet.getContractFactory("starkswap_contracts_StarkswapV1Pair")
     const factory = factoryFixture.factory
     const tFixture = await tokenFixture(owner)
     const tokenA = tFixture.tokenA
@@ -127,22 +119,20 @@ export async function pairFixture(factoryFixture: FactoryFixture, owner: Account
 
     let [a, b] = reverse ? [tokenB.address, tokenA.address] : [tokenA.address, tokenB.address]
 
-    await owner.invoke(factory, "createPair", {
+    await owner.invoke(factory, "create_pair", {
         token_a_address: a,
         token_b_address: b,
         curve: factoryFixture.volatileClassHash
     })
 
-    const res = await factory.call("getPair", {
+    // @ts-ignore
+    const res: bigint = await factory.call("get_pair", {
         token_a_address: tokenA.address,
         token_b_address: tokenB.address,
         curve: factoryFixture.volatileClassHash
     })
 
-    const pairAddress = fromStringToHex(res.pair_address)
-
-    const pair = pairContractFactory.getContractAt(pairAddress)
-
+    const pair = pairContractFactory.getContractAt(`0x${res.toString(16)}`)
     const orderedTokens = orderBySize(tokenA, tokenB)
 
     return {

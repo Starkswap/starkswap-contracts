@@ -1,4 +1,4 @@
-import {uint256ToBN, bnToUint256, Uint256} from "starknet/dist/utils/uint256";
+import {uint256} from "starknet"
 import {StarknetContract} from "@shardlabs/starknet-hardhat-plugin/dist/src/types";
 
 export function expandTo18Decimals(n: bigint): bigint {
@@ -6,16 +6,16 @@ export function expandTo18Decimals(n: bigint): bigint {
 }
 
 export function toUint256(n: bigint): {low: bigint, high: bigint} {
-    let uint256 = bnToUint256(n.toString());
+    let u256 = uint256.bnToUint256(n.toString());
 
     return {
-        low: BigInt(uint256.low.toString()),
-        high: BigInt(uint256.high.toString())
+        low: BigInt(u256.low.toString()),
+        high: BigInt(u256.high.toString())
     }
 }
 
-export function fromUint256(n: Uint256): bigint {
-    return BigInt(uint256ToBN(n).toString())
+export function fromUint256(n: uint256.Uint256): bigint {
+    return BigInt(uint256.uint256ToBN(n).toString())
 }
 
 export function fromStringToHex(str: string): string {

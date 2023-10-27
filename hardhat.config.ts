@@ -8,11 +8,13 @@ import "@nomiclabs/hardhat-ethers";
 const config: HardhatUserConfig = {
     starknet: {
         network: "integrated-devnet",
-        dockerizedVersion: "0.10.3",
-        //venv: "~/cairo_venv"
+        // Instead of using the dockerized Scarb, uses the command you provide here
+        // Can be a path or a resolvable command
+        scarbCommand: "scarb",
+        requestTimeout: 90_000 // 90s since default times out on declare
     },
     networks: {
-        integratedDevnet: {
+        local: {
             url: "http://127.0.0.1:5050",
         }
     }
