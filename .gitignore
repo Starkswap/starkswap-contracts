@@ -2,3 +2,5 @@ target
 node_modules
 starknet-artifacts
 cache
+.DS_Store
+.idea

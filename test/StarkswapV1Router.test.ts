@@ -71,6 +71,7 @@ describe('StarkswapV1Router', function () {
 
         console.log(`0x7533325f737562204f766572666c6f77 => ${starknet.bigIntToShortString(BigInt("0x7533325f737562204f766572666c6f77"))}`)
         console.log(`0x537461726b7377617056313a204b => ${starknet.bigIntToShortString(BigInt("0x537461726b7377617056313a204b"))}`)
+        console.log(`0x537461726b7377617056313a20494e5055545f414d4f554e54203c204d494e => ${starknet.bigIntToShortString(BigInt("0x537461726b7377617056313a20494e5055545f414d4f554e54203c204d494e"))}`)
 
         const accounts: PredeployedAccount[] = await starknet.devnet.getPredeployedAccounts()
 

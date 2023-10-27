@@ -204,8 +204,15 @@ mod StarkswapV1Router {
         ) -> Array<u256> {
             _assert_valid_deadline(deadline);
 
-            let amounts = self._get_amounts_out(amount_in, routes.span());
+            let mut amounts = self._get_amounts_out(amount_in, routes.span());
             assert(amount_out_min <= *amounts[amounts.len() - 1], 'INSUFFICIENT_OUTPUT_AMOUNT');
+
+            let route: Route = *routes[0];
+            let pair_address = _pair_for(self, route.input, route.output, route.curve);
+            let caller_address = get_caller_address();
+            IERC20Dispatcher {
+                contract_address: route.input
+            }.transfer_from(caller_address, pair_address, amounts.pop_front().unwrap());
 
             self._swap(amounts.span(), routes.span(), to);
 
@@ -222,8 +229,15 @@ mod StarkswapV1Router {
         ) -> Array<u256> {
             _assert_valid_deadline(deadline);
 
-            let amounts = self._get_amounts_in(amount_out, routes.span());
+            let mut amounts = self._get_amounts_in(amount_out, routes.span());
             assert(*amounts[0] <= amount_in_max, 'INSUFFICIENT_INPUT_AMOUNT');
+
+            let route: Route = *routes[0];
+            let pair_address = _pair_for(self, route.input, route.output, route.curve);
+            let caller_address = get_caller_address();
+            IERC20Dispatcher {
+                contract_address: route.input
+            }.transfer_from(caller_address, pair_address, amounts.pop_front().unwrap());
 
             self._swap(amounts.span(), routes.span(), to);
 
@@ -405,18 +419,9 @@ mod StarkswapV1Router {
         }
 
         fn _swap(self: @ContractState, amounts: Span<u256>, routes: Span<Route>, to: ContractAddress) {
-            let route: Route = *routes[0];
-            let pair_address = _pair_for(self, route.input, route.output, route.curve);
-            let caller_address = get_caller_address();
-
-            IERC20Dispatcher {
-                contract_address: route.input
-            }.transfer_from(caller_address, pair_address, *amounts[0]);
-
             let mut index = 0;
             loop {
                 if index == routes.len() {
-                    // TODO is this the correct break return val?
                     break;
                 }
 
@@ -551,29 +556,29 @@ mod StarkswapV1Router {
         assert(block_timestamp <= deadline, 'EXPIRED');
     }
 
-    //#[event]
-    //#[derive(Drop, starknet::Event)]
-    //enum Event {
-        //Upgraded: Upgraded
-    //}
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        Upgraded: Upgraded
+    }
 
-    //#[derive(Drop, starknet::Event)]
-    //struct Upgraded {
-        //implementation: ClassHash
-    //}
+    #[derive(Drop, starknet::Event)]
+    struct Upgraded {
+        implementation: ClassHash
+    }
 
-    //#[generate_trait]
-    //#[external(v0)]
-    //impl UpgradeableContract of IUpgradeableContract {
-        //fn upgrade(ref self: ContractState, impl_hash: ClassHash) {
-            //assert(!impl_hash.is_zero(), 'Class hash cannot be zero');
-            //starknet::replace_class_syscall(impl_hash).unwrap();
-            //self.emit(Event::Upgraded(Upgraded { implementation: impl_hash }))
-        //}
+    #[generate_trait]
+    #[external(v0)]
+    impl UpgradeableContract of IUpgradeableContract {
+        fn upgrade(ref self: ContractState, impl_hash: ClassHash) {
+            assert(!impl_hash.is_zero(), 'Class hash cannot be zero');
+            starknet::replace_class_syscall(impl_hash).unwrap();
+            self.emit(Event::Upgraded(Upgraded { implementation: impl_hash }))
+        }
 
-        //fn version(self: @ContractState) -> u8 {
-            //0
-        //}
-    //}
+        fn version(self: @ContractState) -> u8 {
+            0
+        }
+    }
 
 }
